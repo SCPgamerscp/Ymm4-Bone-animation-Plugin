@@ -1,0 +1,56 @@
+<UserControl x:Class="Ymm4BonePlugin.Views.ImageSlotEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:Ymm4BonePlugin.Views"
+             xmlns:c="clr-namespace:YukkuriMovieMaker.Controls;assembly=YukkuriMovieMaker.Controls"
+             mc:Ignorable="d"
+             d:DesignHeight="300" d:DesignWidth="320"
+             d:DataContext="{d:DesignInstance Type={x:Type local:ImageSlotEditorViewModel}}">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="120"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/>
+                <ColumnDefinition Width="26"/>
+            </Grid.ColumnDefinitions>
+
+            <ListBox x:Name="list"
+                     ItemsSource="{Binding Slots}"
+                     SelectedIndex="{Binding SelectedIndex, Mode=TwoWay}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding Name}" FontWeight="Bold" Margin="0,0,6,0"/>
+                            <TextBlock Text="{Binding FilePath}" Opacity="0.7"
+                                       TextTrimming="CharacterEllipsis" MaxWidth="200"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                </Grid.RowDefinitions>
+                <Button Grid.Row="0" Content="+" Command="{Binding AddCommand}" ToolTip="差分を追加"/>
+                <Button Grid.Row="1" Content="-" Command="{Binding RemoveCommand}" ToolTip="差分を削除"/>
+                <Button Grid.Row="2" Content="▲" Command="{Binding MoveUpCommand}"/>
+                <Button Grid.Row="3" Content="▼" Command="{Binding MoveDownCommand}"/>
+            </Grid>
+        </Grid>
+
+        <c:PropertiesEditor Grid.Row="1"
+                            Target="{Binding ElementName=list, Path=SelectedValue}"
+                            BeginEdit="PropertiesEditor_BeginEdit"
+                            EndEdit="PropertiesEditor_EndEdit"/>
+    </Grid>
+</UserControl>
