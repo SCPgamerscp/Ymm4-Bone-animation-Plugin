@@ -1,0 +1,66 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<UseWPF>true</UseWPF>
+		<RootNamespace>Ymm4BonePlugin</RootNamespace>
+		<AssemblyName>Ymm4BonePlugin</AssemblyName>
+		<Version>1.0.0</Version>
+		<Product>YMM4 2Dボーンアニメーションプラグイン</Product>
+		<Description>複数のパーツ画像をボーンで結合し、FK/IK・物理演算・口パク連動でアニメーションさせる図形プラグイン</Description>
+
+		<!--Pdb内にソースコードのフルパスを含めない-->
+		<RepoRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\'))</RepoRoot>
+		<PathMap>$(RepoRoot)=.</PathMap>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!--
+			YMM4本体のDLLを参照する。
+			HintPathの $(YMM4DirPath) は Directory.Build.props で定義する。
+			リポジトリ直下の Directory.Build.props.sample をコピーして、
+			自分のYMM4インストール先を設定すること。
+		-->
+		<Reference Include="YukkuriMovieMaker.Controls">
+			<HintPath>$(YMM4DirPath)YukkuriMovieMaker.Controls.dll</HintPath>
+			<Private>false</Private>
+		</Reference>
+		<Reference Include="YukkuriMovieMaker.Plugin">
+			<HintPath>$(YMM4DirPath)YukkuriMovieMaker.Plugin.dll</HintPath>
+			<Private>false</Private>
+		</Reference>
+		<Reference Include="SharpGen.Runtime">
+			<HintPath>$(YMM4DirPath)SharpGen.Runtime.dll</HintPath>
+			<Private>false</Private>
+		</Reference>
+		<Reference Include="SharpGen.Runtime.COM">
+			<HintPath>$(YMM4DirPath)SharpGen.Runtime.COM.dll</HintPath>
+			<Private>false</Private>
+		</Reference>
+		<Reference Include="Vortice.Direct2D1">
+			<HintPath>$(YMM4DirPath)Vortice.Direct2D1.dll</HintPath>
+			<Private>false</Private>
+		</Reference>
+		<Reference Include="Vortice.DirectX">
+			<HintPath>$(YMM4DirPath)Vortice.DirectX.dll</HintPath>
+			<Private>false</Private>
+		</Reference>
+		<Reference Include="Vortice.Mathematics">
+			<HintPath>$(YMM4DirPath)Vortice.Mathematics.dll</HintPath>
+			<Private>false</Private>
+		</Reference>
+	</ItemGroup>
+
+	<!--
+		YMM4本体に含まれるDLLは配布時に同梱しない。
+		バージョンがずれるとYMM4起動時にプラグインの読み込みに失敗するため。
+	-->
+
+	<!--ビルド後にYMM4のプラグインフォルダへdllをコピーする-->
+	<Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(YMM4DirPath)' != ''">
+		<Exec Command="mkdir &quot;$(YMM4DirPath)user\plugin\$(ProjectName)&quot; &gt; NUL 2&gt;&amp;1&#xD;&#xA;copy &quot;$(TargetPath)&quot; &quot;$(YMM4DirPath)user\plugin\$(ProjectName)\&quot;" />
+	</Target>
+
+</Project>

@@ -1,0 +1,17 @@
+# Build results
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+*.user
+*.suo
+.vs/
+
+# YMM4 local environment (each developer's own YMM4 install path)
+Directory.Build.props
+
+# Test results
+TestResults/
+*.trx

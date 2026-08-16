@@ -1,0 +1,10 @@
+<Project>
+  <PropertyGroup>
+    <!--
+      YMM4のインストールフォルダを指定してください（末尾の \ が必要です）。
+      このファイルを Directory.Build.props にリネームしてから編集してください。
+      例: C:\Program Files\YukkuriMovieMaker\ や D:\YMM4\
+    -->
+    <YMM4DirPath>D:\YMM4\</YMM4DirPath>
+  </PropertyGroup>
+</Project>
