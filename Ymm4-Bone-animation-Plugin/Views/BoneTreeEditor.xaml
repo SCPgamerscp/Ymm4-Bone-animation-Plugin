@@ -1,0 +1,66 @@
+<UserControl x:Class="Ymm4BoneAnimationPlugin.Views.BoneTreeEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:Ymm4BoneAnimationPlugin.Views"
+             xmlns:c="clr-namespace:YukkuriMovieMaker.Controls;assembly=YukkuriMovieMaker.Controls"
+             mc:Ignorable="d"
+             d:DesignHeight="600" d:DesignWidth="320"
+             d:DataContext="{d:DesignInstance Type={x:Type local:BoneTreeEditorViewModel}}">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="220"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 操作ボタン -->
+        <WrapPanel Grid.Row="0" Margin="0,0,0,4">
+            <Button Content="＋ 追加" Command="{Binding AddCommand}" Margin="0,0,4,0" Padding="6,2"
+                    ToolTip="同じ階層にボーンを追加します"/>
+            <Button Content="＋ 子を追加" Command="{Binding AddChildCommand}" Margin="0,0,4,0" Padding="6,2"
+                    ToolTip="選択中のボーンの子としてボーンを追加します"/>
+            <Button Content="－ 削除" Command="{Binding RemoveCommand}" Margin="0,0,4,0" Padding="6,2"
+                    ToolTip="選択中のボーンを削除します（子は親に引き継がれます）"/>
+            <Button Content="▲" Command="{Binding MoveUpCommand}" Margin="0,0,4,0" Padding="6,2"
+                    ToolTip="描画順を前へ"/>
+            <Button Content="▼" Command="{Binding MoveDownCommand}" Margin="0,0,4,0" Padding="6,2"
+                    ToolTip="描画順を後ろへ"/>
+            <Button Content="親を解除" Command="{Binding UnparentCommand}" Padding="6,2"
+                    ToolTip="選択中のボーンをルートに戻します"/>
+        </WrapPanel>
+
+        <!-- ボーン階層ツリー（ドラッグ＆ドロップで親子関係を変更） -->
+        <Border Grid.Row="1" BorderBrush="#40808080" BorderThickness="1">
+            <TreeView x:Name="tree"
+                      ItemsSource="{Binding RootNodes}"
+                      AllowDrop="True"
+                      SelectedItemChanged="Tree_SelectedItemChanged"
+                      PreviewMouseLeftButtonDown="Tree_PreviewMouseLeftButtonDown"
+                      PreviewMouseMove="Tree_PreviewMouseMove"
+                      DragOver="Tree_DragOver"
+                      Drop="Tree_Drop"
+                      Background="Transparent"
+                      BorderThickness="0">
+                <TreeView.ItemContainerStyle>
+                    <Style TargetType="TreeViewItem">
+                        <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+                        <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}"/>
+                    </Style>
+                </TreeView.ItemContainerStyle>
+                <TreeView.ItemTemplate>
+                    <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                        <TextBlock Text="{Binding DisplayName}" Padding="2,1"/>
+                    </HierarchicalDataTemplate>
+                </TreeView.ItemTemplate>
+            </TreeView>
+        </Border>
+
+        <!-- 選択中ボーンのプロパティ -->
+        <c:PropertiesEditor Grid.Row="2"
+                            Target="{Binding SelectedBone}"
+                            BeginEdit="PropertiesEditor_BeginEdit"
+                            EndEdit="PropertiesEditor_EndEdit"/>
+    </Grid>
+</UserControl>
