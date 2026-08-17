@@ -3,7 +3,7 @@
 「テンプレート」欄の `保存` / `読み込み` で扱うJSONファイルの仕様です。
 手書きで編集したり、スクリプトで生成したりする場合の参考にしてください。
 
-対応する実装は [`Ymm4BonePlugin/Core/SkeletonTemplate.cs`](../Ymm4BonePlugin/Core/SkeletonTemplate.cs) です。
+対応する実装は [`Ymm4-Bone-animation-Plugin/Core/SkeletonTemplate.cs`](../Ymm4-Bone-animation-Plugin/Core/SkeletonTemplate.cs) です。
 
 ---
 

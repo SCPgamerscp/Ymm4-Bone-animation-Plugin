@@ -1,4 +1,4 @@
-# YMM4 2Dボーンアニメーションプラグイン
+# Ymm4-Bone-animation-Plugin
 
 画像にボーンをつけて動かせるようにする、YukkuriMovieMaker4（YMM4）用の**図形プラグイン**です。
 
@@ -98,11 +98,11 @@ copy Directory.Build.props.sample Directory.Build.props
 ### 3. ビルド
 
 ```bash
-dotnet build Ymm4BonePlugin/Ymm4BonePlugin.csproj -c Release
+dotnet build Ymm4-Bone-animation-Plugin/Ymm4-Bone-animation-Plugin.csproj -c Release
 ```
 
 ビルドに成功すると、PostBuildイベントによって
-`<YMM4DirPath>\user\plugin\Ymm4BonePlugin\Ymm4BonePlugin.dll` へ自動でコピーされます。
+`<YMM4DirPath>\user\plugin\Ymm4-Bone-animation-Plugin\Ymm4-Bone-animation-Plugin.dll` へ自動でコピーされます。
 
 > **注意**: YMM4本体に同梱されているDLL（`YukkuriMovieMaker.*`, `Vortice.*`, `SharpGen.*`）は
 > すべて `<Private>false</Private>` を指定しており、**プラグインと一緒に配布されません**。
@@ -112,17 +112,17 @@ dotnet build Ymm4BonePlugin/Ymm4BonePlugin.csproj -c Release
 
 ## インストール
 
-1. ビルドで生成された `Ymm4BonePlugin.dll` を用意します。
-2. YMM4のインストールフォルダ内に `user\plugin\Ymm4BonePlugin\` フォルダを作ります。
-3. その中に `Ymm4BonePlugin.dll` を置きます。
+1. ビルドで生成された `Ymm4-Bone-animation-Plugin.dll` を用意します。
+2. YMM4のインストールフォルダ内に `user\plugin\Ymm4-Bone-animation-Plugin\` フォルダを作ります。
+3. その中に `Ymm4-Bone-animation-Plugin.dll` を置きます。
 4. YMM4を再起動します。
 
 ```
 YukkuriMovieMaker\
 └─ user\
    └─ plugin\
-      └─ Ymm4BonePlugin\
-         └─ Ymm4BonePlugin.dll
+      └─ Ymm4-Bone-animation-Plugin\
+         └─ Ymm4-Bone-animation-Plugin.dll
 ```
 
 ---
@@ -298,7 +298,7 @@ YukkuriMovieMaker\
 YMM4やDirect2Dに依存する部分と、純粋な計算ロジックを明確に分離しています。
 
 ```
-Ymm4BonePlugin/
+Ymm4-Bone-animation-Plugin/
 ├─ Core/                    ★ YMM4・Direct2D非依存（テスト可能）
 │  ├─ MathHelper.cs           角度・ベクトル・行列のユーティリティ（NaN安全）
 │  ├─ BonePose.cs             1フレーム分のローカル姿勢 + Squash&Stretch行列生成
@@ -372,7 +372,7 @@ Core層のみを対象とした単体テスト（xUnit・56件）があります
 Core層はYMM4に依存しないため、**Linux/macOSでも実行できます**。
 
 ```bash
-cd tests/Ymm4BonePlugin.Core.Tests
+cd tests/Ymm4-Bone-animation-Plugin.Core.Tests
 dotnet test
 ```
 

@@ -1,0 +1,18 @@
+<UserControl x:Class="Ymm4BoneAnimationPlugin.Views.TemplateIoEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:Ymm4BoneAnimationPlugin.Views"
+             mc:Ignorable="d"
+             d:DesignHeight="80" d:DesignWidth="320">
+    <StackPanel>
+        <WrapPanel>
+            <Button Content="テンプレートを保存" Click="Save_Click" Margin="0,0,4,0" Padding="8,3"
+                    ToolTip="現在のボーン構造をJSONファイルへ保存します"/>
+            <Button Content="テンプレートを読込" Click="Load_Click" Padding="8,3"
+                    ToolTip="JSONファイルからボーン構造を読み込みます（現在の構造は置き換わります）"/>
+        </WrapPanel>
+        <TextBlock x:Name="statusText" Opacity="0.7" Margin="0,4,0,0" TextWrapping="Wrap"/>
+    </StackPanel>
+</UserControl>
