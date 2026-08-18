@@ -24,7 +24,6 @@ namespace Ymm4BoneAnimationPlugin.Views
         bool isPanning;
         PuppetPinViewModel? draggingPin;
         Point pinDragStartOffset;
-        PuppetPinViewModel? connectingSourcePin;
 
         PuppetImageLayerViewModel? draggingLayer;
         Point layerDragStartOffset;
@@ -125,8 +124,8 @@ namespace Ymm4BoneAnimationPlugin.Views
 
                     var container = new Grid
                     {
-                        Width = bitmap.PixelWidth,
-                        Height = bitmap.PixelHeight,
+                        Width = layer.Width,
+                        Height = layer.Height,
                         Cursor = Cursors.Hand,
                         DataContext = layer,
                     };
@@ -134,8 +133,8 @@ namespace Ymm4BoneAnimationPlugin.Views
                     var image = new Image
                     {
                         Source = bitmap,
-                        Width = bitmap.PixelWidth,
-                        Height = bitmap.PixelHeight,
+                        Width = layer.Width,
+                        Height = layer.Height,
                         Opacity = 0.95,
                         IsHitTestVisible = false,
                     };
@@ -198,9 +197,9 @@ namespace Ymm4BoneAnimationPlugin.Views
                         }
                         else if (e.ChangedButton == MouseButton.Left)
                         {
-                            if (viewModel.IsAddPinMode)
+                            if (viewModel.IsAddPinAndBoneMode)
                             {
-                                // ピン追加モード時は画像をクリックした位置にピンを1つだけ追加
+                                // ピン・ボーン作成モード時はクリック位置にピンを打って自動連結
                                 var canvasPos = e.GetPosition(MainCanvas);
                                 viewModel.AddPinAt(canvasPos.X, canvasPos.Y);
                                 e.Handled = true;
@@ -264,7 +263,7 @@ namespace Ymm4BoneAnimationPlugin.Views
             {
                 var line = new Line
                 {
-                    Stroke = new SolidColorBrush(Color.FromArgb(200, 33, 150, 243)),
+                    Stroke = new SolidColorBrush(Color.FromArgb(220, 33, 150, 243)),
                     StrokeThickness = 4,
                     IsHitTestVisible = false,
                 };
@@ -374,29 +373,16 @@ namespace Ymm4BoneAnimationPlugin.Views
 
             bool pinMoved = false;
 
-            // ピンのマウスイベント
+            // ピンのマウスイベント（選択＆ドラッグ移動）
             container.MouseDown += (s, e) =>
             {
                 if (e.ChangedButton == MouseButton.Left)
                 {
                     viewModel.SelectedPin = pin;
-
-                    if (viewModel.IsConnectBoneMode)
-                    {
-                        connectingSourcePin = pin;
-                        ConnectingLine.X1 = pin.X;
-                        ConnectingLine.Y1 = pin.Y;
-                        ConnectingLine.X2 = pin.X;
-                        ConnectingLine.Y2 = pin.Y;
-                        ConnectingLine.Visibility = Visibility.Visible;
-                    }
-                    else
-                    {
-                        draggingPin = pin;
-                        pinMoved = false;
-                        var canvasPos = e.GetPosition(MainCanvas);
-                        pinDragStartOffset = new Point(pin.X - canvasPos.X, pin.Y - canvasPos.Y);
-                    }
+                    draggingPin = pin;
+                    pinMoved = false;
+                    var canvasPos = e.GetPosition(MainCanvas);
+                    pinDragStartOffset = new Point(pin.X - canvasPos.X, pin.Y - canvasPos.Y);
                     container.CaptureMouse();
                     e.Handled = true;
                 }
@@ -416,13 +402,6 @@ namespace Ymm4BoneAnimationPlugin.Views
                     pin.Y = Math.Round(canvasPos.Y + pinDragStartOffset.Y, 1);
                     e.Handled = true;
                 }
-                else if (connectingSourcePin == pin)
-                {
-                    var canvasPos = e.GetPosition(MainCanvas);
-                    ConnectingLine.X2 = canvasPos.X;
-                    ConnectingLine.Y2 = canvasPos.Y;
-                    e.Handled = true;
-                }
             };
 
             container.MouseUp += (s, e) =>
@@ -433,33 +412,9 @@ namespace Ymm4BoneAnimationPlugin.Views
                     container.ReleaseMouseCapture();
                     e.Handled = true;
                 }
-                else if (connectingSourcePin != null)
-                {
-                    ConnectingLine.Visibility = Visibility.Collapsed;
-                    var hitPin = FindPinAt(e.GetPosition(MainCanvas));
-                    if (hitPin != null && hitPin != connectingSourcePin)
-                    {
-                        viewModel.ConnectPins(connectingSourcePin, hitPin);
-                    }
-                    connectingSourcePin = null;
-                    container.ReleaseMouseCapture();
-                    e.Handled = true;
-                }
             };
 
             return container;
-        }
-
-        PuppetPinViewModel? FindPinAt(Point canvasPos)
-        {
-            foreach (var pin in viewModel.Pins)
-            {
-                var dx = pin.X - canvasPos.X;
-                var dy = pin.Y - canvasPos.Y;
-                if (dx * dx + dy * dy <= 20 * 20)
-                    return pin;
-            }
-            return null;
         }
 
         #region キャンバスマウス操作 (ズーム・パン・ピン打ち)
@@ -500,14 +455,15 @@ namespace Ymm4BoneAnimationPlugin.Views
 
                 var canvasPos = e.GetPosition(MainCanvas);
 
-                if (viewModel.IsAddPinMode)
+                if (viewModel.IsAddPinAndBoneMode)
                 {
+                    // 何もない場所をクリックしてもピンを打って自動連結
                     viewModel.AddPinAt(canvasPos.X, canvasPos.Y);
                     e.Handled = true;
                 }
                 else
                 {
-                    // 何もない背景をクリックした場合は選択解除
+                    // 移動・選択モードで背景をクリックした場合は選択解除
                     viewModel.SelectedPin = null;
                     viewModel.SelectedLayer = null;
                 }
@@ -538,13 +494,6 @@ namespace Ymm4BoneAnimationPlugin.Views
                 lastMousePos = currentPos;
                 e.Handled = true;
             }
-            else if (connectingSourcePin != null)
-            {
-                var canvasPos = e.GetPosition(MainCanvas);
-                ConnectingLine.X2 = canvasPos.X;
-                ConnectingLine.Y2 = canvasPos.Y;
-                e.Handled = true;
-            }
         }
 
         void Canvas_MouseUp(object sender, MouseButtonEventArgs e)
@@ -553,18 +502,6 @@ namespace Ymm4BoneAnimationPlugin.Views
             {
                 isPanning = false;
                 CanvasContainer.ReleaseMouseCapture();
-                e.Handled = true;
-            }
-            if (connectingSourcePin != null && e.ChangedButton == MouseButton.Left)
-            {
-                ConnectingLine.Visibility = Visibility.Collapsed;
-                var canvasPos = e.GetPosition(MainCanvas);
-                var hitPin = FindPinAt(canvasPos);
-                if (hitPin != null && hitPin != connectingSourcePin)
-                {
-                    viewModel.ConnectPins(connectingSourcePin, hitPin);
-                }
-                connectingSourcePin = null;
                 e.Handled = true;
             }
         }

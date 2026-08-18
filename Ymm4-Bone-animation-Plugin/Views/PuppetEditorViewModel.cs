@@ -5,6 +5,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Windows.Media.Imaging;
 using YukkuriMovieMaker.Commons;
 using Ymm4BoneAnimationPlugin.Shape;
 
@@ -15,11 +16,8 @@ namespace Ymm4BoneAnimationPlugin.Views
         [Description("移動・選択")]
         SelectMove,
 
-        [Description("ピン追加")]
-        AddPin,
-
-        [Description("ボーン接続")]
-        ConnectBone,
+        [Description("ピン・ボーン作成")]
+        AddPinAndBone,
     }
 
     /// <summary>
@@ -149,6 +147,30 @@ namespace Ymm4BoneAnimationPlugin.Views
         public PuppetImageLayerViewModel(string filePath)
         {
             FilePath = filePath;
+            LoadDimensions();
+        }
+
+        void LoadDimensions()
+        {
+            if (!File.Exists(FilePath))
+                return;
+            try
+            {
+                var bitmap = new BitmapImage();
+                bitmap.BeginInit();
+                bitmap.UriSource = new Uri(FilePath, UriKind.Absolute);
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                bitmap.EndInit();
+                if (bitmap.PixelWidth > 0 && bitmap.PixelHeight > 0)
+                {
+                    Width = bitmap.PixelWidth;
+                    Height = bitmap.PixelHeight;
+                }
+            }
+            catch
+            {
+                // ロード失敗時は既定サイズを使用
+            }
         }
     }
 
@@ -179,7 +201,7 @@ namespace Ymm4BoneAnimationPlugin.Views
 
     /// <summary>
     /// パペット変形方式のボーンエディタViewModel。
-    /// Undo/Redo、パーツ画像直接選択・配置、ピン・ボーン接続、口パク・目パチ設定を完全サポート。
+    /// ワンクリックでのピン・ボーン自動結合、パーツ画像配置、前後順序管理、口パク・目パチ設定を完全サポート。
     /// </summary>
     public class PuppetEditorViewModel : Bindable
     {
@@ -198,16 +220,14 @@ namespace Ymm4BoneAnimationPlugin.Views
                 if (Set(ref currentTool, value))
                 {
                     OnPropertyChanged(nameof(IsSelectMoveMode));
-                    OnPropertyChanged(nameof(IsAddPinMode));
-                    OnPropertyChanged(nameof(IsConnectBoneMode));
+                    OnPropertyChanged(nameof(IsAddPinAndBoneMode));
                 }
             }
         }
-        PuppetToolMode currentTool = PuppetToolMode.AddPin;
+        PuppetToolMode currentTool = PuppetToolMode.AddPinAndBone;
 
         public bool IsSelectMoveMode { get => CurrentTool == PuppetToolMode.SelectMove; set { if (value) CurrentTool = PuppetToolMode.SelectMove; } }
-        public bool IsAddPinMode { get => CurrentTool == PuppetToolMode.AddPin; set { if (value) CurrentTool = PuppetToolMode.AddPin; } }
-        public bool IsConnectBoneMode { get => CurrentTool == PuppetToolMode.ConnectBone; set { if (value) CurrentTool = PuppetToolMode.ConnectBone; } }
+        public bool IsAddPinAndBoneMode { get => CurrentTool == PuppetToolMode.AddPinAndBone; set { if (value) CurrentTool = PuppetToolMode.AddPinAndBone; } }
 
         public PuppetPinViewModel? SelectedPin
         {
@@ -219,7 +239,6 @@ namespace Ymm4BoneAnimationPlugin.Views
                 if (Set(ref selectedPin, value) && selectedPin != null)
                 {
                     selectedPin.IsSelected = true;
-                    // ピン選択時は画像選択を排他解除
                     SelectedLayer = null;
                 }
                 RaiseCommandStates();
@@ -237,7 +256,6 @@ namespace Ymm4BoneAnimationPlugin.Views
                 if (Set(ref selectedLayer, value) && selectedLayer != null)
                 {
                     selectedLayer.IsSelected = true;
-                    // レイヤー選択時はピン選択を排他解除
                     if (SelectedPin != null)
                     {
                         SelectedPin.IsSelected = false;
@@ -259,8 +277,7 @@ namespace Ymm4BoneAnimationPlugin.Views
         public double PanY { get => panY; set => Set(ref panY, value); }
         double panY = 0;
 
-        public ActionCommand AddPinCommand { get; }
-        public ActionCommand ConnectBoneCommand { get; }
+        public ActionCommand AddPinAndBoneCommand { get; }
         public ActionCommand SelectMoveCommand { get; }
         public ActionCommand DeleteSelectedCommand { get; }
         public ActionCommand ClearAllCommand { get; }
@@ -276,8 +293,7 @@ namespace Ymm4BoneAnimationPlugin.Views
 
         public PuppetEditorViewModel(ImmutableList<BoneItem> existingBones)
         {
-            AddPinCommand = new ActionCommand(_ => true, _ => CurrentTool = PuppetToolMode.AddPin);
-            ConnectBoneCommand = new ActionCommand(_ => true, _ => CurrentTool = PuppetToolMode.ConnectBone);
+            AddPinAndBoneCommand = new ActionCommand(_ => true, _ => CurrentTool = PuppetToolMode.AddPinAndBone);
             SelectMoveCommand = new ActionCommand(_ => true, _ => CurrentTool = PuppetToolMode.SelectMove);
             DeleteSelectedCommand = new ActionCommand(_ => SelectedPin != null, _ => DeleteSelectedPin());
             ClearAllCommand = new ActionCommand(_ => Pins.Count > 0 || ImageLayers.Count > 0, _ => ClearAll());
@@ -459,6 +475,9 @@ namespace Ymm4BoneAnimationPlugin.Views
 
             foreach (var bone in existingBones)
             {
+                var pinX = bone.X.Values.Count > 0 ? bone.X.Values[0].Value : curX;
+                var pinY = bone.Y.Values.Count > 0 ? bone.Y.Values[0].Value : curY;
+
                 var pin = new PuppetPinViewModel
                 {
                     Id = bone.Id,
@@ -475,8 +494,8 @@ namespace Ymm4BoneAnimationPlugin.Views
                     BlinkSlotNames = bone.BlinkSlotNames,
                     IsIkEnabled = bone.IsIkEnabled,
                     IsPhysicsEnabled = bone.IsPhysicsEnabled,
-                    X = curX,
-                    Y = curY,
+                    X = pinX,
+                    Y = pinY,
                     OriginalBone = bone,
                 };
                 pinMap[bone.Id] = pin;
@@ -485,7 +504,15 @@ namespace Ymm4BoneAnimationPlugin.Views
                 if (!string.IsNullOrEmpty(pin.ImagePath) && File.Exists(pin.ImagePath))
                 {
                     if (!ImageLayers.Any(l => l.FilePath.Equals(pin.ImagePath, StringComparison.OrdinalIgnoreCase)))
-                        ImageLayers.Add(new PuppetImageLayerViewModel(pin.ImagePath) { ZOrder = bone.BaseZOrder });
+                    {
+                        var layer = new PuppetImageLayerViewModel(pin.ImagePath)
+                        {
+                            X = pinX,
+                            Y = pinY,
+                            ZOrder = bone.BaseZOrder,
+                        };
+                        ImageLayers.Add(layer);
+                    }
                 }
 
                 curY += Math.Max(40, bone.Length);
@@ -496,10 +523,14 @@ namespace Ymm4BoneAnimationPlugin.Views
                 SelectedPin = Pins[0];
         }
 
+        /// <summary>
+        /// クリックした位置にピンを打ち、直前のピンと自動でボーン（親子関係）を結線する。
+        /// </summary>
         public void AddPinAt(double x, double y)
         {
             PushSnapshot();
 
+            var parentPin = SelectedPin;
             var name = $"ピン{Pins.Count + 1}";
             var newPin = new PuppetPinViewModel
             {
@@ -525,14 +556,15 @@ namespace Ymm4BoneAnimationPlugin.Views
                 }
             }
 
-            // 直前に選択されていたピンがあれば、自動的にその子としてボーンを繋ぐ
-            if (SelectedPin != null)
+            // 直前に選択されていたピンがあれば、自動的にその子としてボーンを連結
+            if (parentPin != null)
             {
-                newPin.ParentPinId = SelectedPin.Id;
+                newPin.ParentPinId = parentPin.Id;
             }
 
             Pins.Add(newPin);
             RebuildBoneConnections();
+            // 新しく打ったピンを選択状態にし、次のクリックで連続してボーンが伸びる
             SelectedPin = newPin;
         }
 
@@ -704,13 +736,23 @@ namespace Ymm4BoneAnimationPlugin.Views
 
             PushSnapshot();
             int curZ = ImageLayers.Count == 0 ? 0 : ImageLayers.Max(l => l.ZOrder) + 1;
+            double offsetX = ImageLayers.Count * 20;
+            double offsetY = ImageLayers.Count * 20;
+
             foreach (var file in valid)
             {
                 if (!ImageLayers.Any(l => l.FilePath.Equals(file, StringComparison.OrdinalIgnoreCase)))
                 {
-                    var layer = new PuppetImageLayerViewModel(file) { ZOrder = curZ++ };
+                    var layer = new PuppetImageLayerViewModel(file)
+                    {
+                        X = offsetX,
+                        Y = offsetY,
+                        ZOrder = curZ++,
+                    };
                     ImageLayers.Add(layer);
                     SelectedLayer = layer;
+                    offsetX += 30;
+                    offsetY += 30;
                 }
             }
         }

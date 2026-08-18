@@ -59,15 +59,13 @@
                     <Button Content="↪ 進む" Command="{Binding RedoCommand}" ToolTip="やり直す (Ctrl+Y / Ctrl+Shift+Z)"/>
                     <Separator Width="1" Margin="6,2" Background="#3F3F46"/>
 
-                    <RadioButton Content="🖐 移動・選択" IsChecked="{Binding IsSelectMoveMode}" Padding="4,2"
+                    <RadioButton Content="📍 ピン・ボーン作成 (クリック)" IsChecked="{Binding IsAddPinAndBoneMode}" Padding="6,2"
+                                 ToolTip="パーツ画像上の関節位置をクリックしてピンを打ちます。直前のピンと自動的に骨組み（ボーン）が繋がります"/>
+                    <RadioButton Content="🖐 移動・選択" IsChecked="{Binding IsSelectMoveMode}" Padding="6,2"
                                  ToolTip="画像パーツやピンをドラッグ移動したり、クリックして選択します"/>
-                    <RadioButton Content="📍 ピン追加 (クリック)" IsChecked="{Binding IsAddPinMode}" Padding="4,2"
-                                 ToolTip="パーツ画像上の関節位置をクリックしてピンを追加します"/>
-                    <RadioButton Content="🦴 ボーン接続 (ドラッグ)" IsChecked="{Binding IsConnectBoneMode}" Padding="4,2"
-                                 ToolTip="ピンから別のピンへドラッグしてボーン（親子関係）を結びます"/>
                     <Separator Width="1" Margin="6,2" Background="#3F3F46"/>
 
-                    <Button Content="📁 画像追加" Command="{Binding AddImagesCommand}" ToolTip="背景パーツ画像を追加します（直接ドラッグ＆ドロップも可能）"/>
+                    <Button Content="📁 画像追加" Command="{Binding AddImagesCommand}" ToolTip="パーツ画像を追加します（直接ドラッグ＆ドロップも可能）"/>
                     <Button Content="🗑 ピン削除" Command="{Binding DeleteSelectedCommand}" ToolTip="選択中のピンを削除します (Deleteキー)"/>
                     <Button Content="🔄 全クリア" Command="{Binding ClearAllCommand}" ToolTip="すべてのピンと画像をクリアします"/>
                     <Button Content="🔍 リセット" Command="{Binding ResetViewCommand}" ToolTip="表示位置と倍率を初期化します"/>
