@@ -247,12 +247,7 @@ namespace Ymm4BoneAnimationPlugin.Shape
             if (isSelected)
                 dc.DrawEllipse(new Ellipse(origin, jointRadius + 2f, jointRadius + 2f), bBrush, 1.5f);
 
-            // 先端の余分な点は描画せず、ピン間をつなぐ接続線とピン位置（根本）のみを描画
-            if (isSelected)
-            {
-                var tipRadius = 2.5f;
-                dc.FillEllipse(new Ellipse(tip, tipRadius, tipRadius), bBrush);
-            }
+            // 先端の点は描画せず、ピン位置（根本）のみを描画
 
             // IKターゲット
             var ik = transform.Bone.Ik;
