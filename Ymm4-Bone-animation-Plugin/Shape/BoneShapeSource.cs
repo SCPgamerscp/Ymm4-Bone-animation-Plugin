@@ -307,9 +307,8 @@ namespace Ymm4BoneAnimationPlugin.Shape
                             }
                             else
                             {
-                                // 親を持つピン（手足・頭）は親関節を中心として直感追従（パペット変形）
-                                if (transformMap.TryGetValue(targetTransform.Bone.ParentId!, out var parentTransform)
-                                    && itemMap.TryGetValue(targetTransform.Bone.ParentId!, out var parentItem))
+                                // 親を持つパーツ（頭・腕など）のピンをドラッグしたときは、親関節を中心にこのパーツ自身を回転
+                                if (transformMap.TryGetValue(targetTransform.Bone.ParentId!, out var parentTransform))
                                 {
                                     var parentOrigin = parentTransform.Origin;
                                     var currentVec = targetTransform.Origin - parentOrigin;
@@ -323,7 +322,7 @@ namespace Ymm4BoneAnimationPlugin.Shape
 
                                         if (Math.Abs(deltaAngle) > 0.001f)
                                         {
-                                            parentItem.Rotation.AddToEachValues(deltaAngle);
+                                            item.Rotation.AddToEachValues(deltaAngle);
                                         }
                                     }
                                 }

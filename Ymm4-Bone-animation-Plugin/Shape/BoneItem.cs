@@ -24,19 +24,16 @@ namespace Ymm4BoneAnimationPlugin.Shape
         public string Id { get => id; set => Set(ref id, value); }
         string id = System.Guid.NewGuid().ToString("N");
 
-        [Display(GroupName = "ボーン", Name = "名前", Description = "ボーンの名前")]
+        [Display(GroupName = "基本情報", Name = "パーツ名", Description = "パーツの名前")]
         [TextEditor]
         public string Name { get => name; set => Set(ref name, value); }
-        string name = "ボーン";
+        string name = "パーツ";
 
-        /// <summary>親ボーンのID。TreeViewのドラッグ＆ドロップで変更される。</summary>
+        /// <summary>親ボーンのID。パペットエディタやTreeViewで変更される。</summary>
         public string ParentId { get => parentId; set => Set(ref parentId, value); }
         string parentId = string.Empty;
 
-        [Display(GroupName = "ボーン", Name = "長さ", Description = "子ボーンの接続位置とIK計算に使用します")]
-        [TextBoxSlider("F1", "px", 1, 500)]
-        [DefaultValue(100d)]
-        [Range(1, 100000)]
+        /// <summary>ボーンの長さ（アンカー座標から自動計算される内部プロパティ）。</summary>
         public double Length { get => length; set => Set(ref length, value); }
         double length = 100;
 
