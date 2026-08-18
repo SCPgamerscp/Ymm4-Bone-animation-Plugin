@@ -755,7 +755,7 @@ namespace Ymm4BoneAnimationPlugin.Views
                 result.Add(bone);
             }
 
-            // 親子関係と長さ・オフセットの計算
+            // 親子関係と長さ・正確な相対オフセットの計算（パーツの初期位置が1mmもズレないようにする）
             foreach (var layer in ImageLayers)
             {
                 var bone = layerToBoneMap[layer.Id];
@@ -769,10 +769,15 @@ namespace Ymm4BoneAnimationPlugin.Views
                     {
                         var dx = layer.JointX - parentLayer.JointX;
                         var dy = layer.JointY - parentLayer.JointY;
-                        var dist = Math.Sqrt(dx * dx + dy * dy);
 
-                        if (dist > 5)
-                            parentBone.Length = Math.Round(dist, 1);
+                        // 立ち絵パーツでは親の原点に子が直接アンカー接続するため、Lengthによる余分なオフセットは0にする
+                        parentBone.Length = 0;
+
+                        // 親の関節位置からの正確な相対オフセットを設定（初期状態で立ち絵が全くズレない）
+                        if (bone.X.Values.Count > 0)
+                            bone.X.Values[0].Value = Math.Round(dx, 1);
+                        if (bone.Y.Values.Count > 0)
+                            bone.Y.Values[0].Value = Math.Round(dy, 1);
                     }
                 }
                 else

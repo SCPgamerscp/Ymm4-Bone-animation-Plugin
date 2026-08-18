@@ -127,7 +127,6 @@
                                     <Button Content="▲ 前面" Command="{Binding BringLayerForwardCommand}" Padding="4,2" Margin="0,0,2,0" ToolTip="1つ手前に移動"/>
                                     <Button Content="▼ 背面" Command="{Binding SendLayerBackwardCommand}" Padding="4,2" Margin="0,0,2,0" ToolTip="1つ奥に移動"/>
                                     <Button Content="⏬ 最背面" Command="{Binding SendLayerToBackCommand}" Padding="4,2" Margin="0,0,2,0" ToolTip="一番奥に表示"/>
-                                    <Button Content="🔗 結合" Command="{Binding ConnectToPreviousLayerCommand}" Background="#0E639C" BorderBrush="#1177BB" FontWeight="Bold" Padding="5,2" Margin="0,0,2,0" ToolTip="上のパーツとボーン結合する"/>
                                     <Button Content="🗑 削除" Command="{Binding DeleteLayerCommand}" Padding="4,2" ToolTip="パーツを削除"/>
                                 </WrapPanel>
                                 <Border BorderBrush="#3F3F46" BorderThickness="1" Background="#1E1E1E" Height="140">
@@ -186,20 +185,13 @@
                                 <TextBlock Text="選択中パーツ名" Foreground="#AAAAAA" Margin="0,2,0,2"/>
                                 <TextBox Text="{Binding SelectedLayer.PartName, Mode=OneWay}" Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="4" IsReadOnly="True" FontWeight="Bold"/>
 
-                                <TextBlock Text="結合する親パーツ（親ボーン）" Foreground="#AAAAAA" Margin="0,6,0,2"/>
-                                <Grid Margin="0,0,0,4">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <ComboBox Grid.Column="0" ItemsSource="{Binding AvailableParents}"
-                                              SelectedValue="{Binding SelectedLayer.ParentId, Mode=TwoWay}"
-                                              SelectedValuePath="Id"
-                                              DisplayMemberPath="Name"
-                                              Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="4"/>
-                                    <Button Grid.Column="1" Content="🔗 上のパーツに結合" Command="{Binding ConnectToPreviousLayerCommand}" Background="#0E639C" BorderBrush="#1177BB" FontWeight="Bold" Margin="4,0,0,0" Padding="8,4" ToolTip="一覧で1つ上にあるパーツと結合"/>
-                                </Grid>
-                                <Button Content="❌ 親子結合を解除（ルートにする）" Command="{Binding UnlinkParentCommand}" Margin="0,2,0,0" HorizontalAlignment="Right" FontSize="11"/>
+                                <TextBlock Text="🔗 結合する親パーツを選択" Foreground="#AAAAAA" Margin="0,6,0,2"/>
+                                <ComboBox ItemsSource="{Binding AvailableParents}"
+                                          SelectedValue="{Binding SelectedLayer.ParentId, Mode=TwoWay}"
+                                          SelectedValuePath="Id"
+                                          DisplayMemberPath="Name"
+                                          Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="4"/>
+                                <Button Content="❌ 親子結合を解除（ルートにする）" Command="{Binding UnlinkParentCommand}" Margin="0,4,0,0" HorizontalAlignment="Right" FontSize="11"/>
 
                                 <Separator Margin="0,8" Background="#3F3F46"/>
 
