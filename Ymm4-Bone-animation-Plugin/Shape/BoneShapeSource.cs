@@ -247,9 +247,12 @@ namespace Ymm4BoneAnimationPlugin.Shape
             if (isSelected)
                 dc.DrawEllipse(new Ellipse(origin, jointRadius + 2f, jointRadius + 2f), bBrush, 1.5f);
 
-            // 先端
-            var tipRadius = isSelected ? 4.5f : 3f;
-            dc.FillEllipse(new Ellipse(tip, tipRadius, tipRadius), bBrush);
+            // 先端の余分な点は描画せず、ピン間をつなぐ接続線とピン位置（根本）のみを描画
+            if (isSelected)
+            {
+                var tipRadius = 2.5f;
+                dc.FillEllipse(new Ellipse(tip, tipRadius, tipRadius), bBrush);
+            }
 
             // IKターゲット
             var ik = transform.Bone.Ik;
@@ -261,7 +264,7 @@ namespace Ymm4BoneAnimationPlugin.Shape
         }
 
         /// <summary>
-        /// プレビュー上でドラッグできる制御点を更新する。
+        /// パペット変形方式：1ピン＝1つのコントローラー点を配置し、直感的なピン操作を実現する。
         /// </summary>
         void UpdateControllers(
             IReadOnlyList<BoneTransform> transforms,
@@ -271,6 +274,7 @@ namespace Ymm4BoneAnimationPlugin.Shape
             int fps)
         {
             var controllers = new List<VideoController>();
+            var transformMap = transforms.ToDictionary(t => t.Bone.Id);
 
             foreach (var transform in transforms)
             {
@@ -278,62 +282,67 @@ namespace Ymm4BoneAnimationPlugin.Shape
                     continue;
 
                 var origin = transform.Origin;
-                var tip = transform.Tip;
-                if (!MathHelper.IsFinite(origin) || !MathHelper.IsFinite(tip))
+                if (!MathHelper.IsFinite(origin))
                     continue;
 
-                // --- ボーン位置の移動ハンドル（根本） ---
-                var movePoint = new ControllerPoint(
+                // --- 1ピン＝1点コントローラー ---
+                var isRoot = string.IsNullOrEmpty(transform.Bone.ParentId);
+
+                var pinPoint = new ControllerPoint(
                     new Vector3(origin.X, origin.Y, 0),
                     arg =>
                     {
                         parameter.SelectedBoneId = item.Id;
-                        var delta = ToLocalDelta(new Vector2(arg.Delta.X, arg.Delta.Y), transform);
-                        item.X.AddToEachValues(delta.X);
-                        item.Y.AddToEachValues(delta.Y);
-                    });
+                        var delta = new Vector2(arg.Delta.X, arg.Delta.Y);
 
-                // --- ボーン先端のハンドル（回転） ---
-                var rotatePoint = new ControllerPoint(
-                    new Vector3(tip.X, tip.Y, 0),
-                    arg =>
-                    {
-                        parameter.SelectedBoneId = item.Id;
-                        var current = transform.Tip - transform.Origin;
-                        var dragged = current + new Vector2(arg.Delta.X, arg.Delta.Y);
-
-                        var deltaAngle = MathHelper.DeltaDegrees(
-                            MathHelper.ToDegrees(current),
-                            MathHelper.ToDegrees(dragged));
-                        if (Math.Abs(deltaAngle) > 0.0001f)
-                            item.Rotation.AddToEachValues(deltaAngle);
-                    });
-
-                controllers.Add(new VideoController([movePoint, rotatePoint])
-                {
-                    Connection = VideoControllerPointConnection.Line,
-                });
-
-                // --- IKターゲットのハンドル ---
-                if (item.IsIkEnabled)
-                {
-                    var target = item.GetIkTarget(frame, length, fps);
-                    if (MathHelper.IsFinite(target))
-                    {
-                        var ikPoint = new ControllerPoint(
-                            new Vector3(target.X, target.Y, 0),
-                            arg =>
-                            {
-                                parameter.SelectedBoneId = item.Id;
-                                item.IkTargetX.AddToEachValues(arg.Delta.X);
-                                item.IkTargetY.AddToEachValues(arg.Delta.Y);
-                            });
-                        controllers.Add(new VideoController([ikPoint])
+                        if (item.IsIkEnabled)
                         {
-                            Connection = VideoControllerPointConnection.None,
-                        });
-                    }
-                }
+                            // IK有効時はIKターゲットをドラッグ移動
+                            item.IkTargetX.AddToEachValues(delta.X);
+                            item.IkTargetY.AddToEachValues(delta.Y);
+                        }
+                        else if (isRoot)
+                        {
+                            // ルートピン（体など）は全体を平行移動
+                            var localDelta = ToLocalDelta(delta, transform);
+                            item.X.AddToEachValues(localDelta.X);
+                            item.Y.AddToEachValues(localDelta.Y);
+                        }
+                        else
+                        {
+                            // 親を持つピン（手足・頭など）は、親関節を中心とした直感回転（パペット操作）
+                            if (transformMap.TryGetValue(transform.Bone.ParentId!, out var parentTransform)
+                                && itemMap.TryGetValue(transform.Bone.ParentId!, out var parentItem))
+                            {
+                                var parentOrigin = parentTransform.Origin;
+                                var currentVec = transform.Origin - parentOrigin;
+                                var draggedVec = (transform.Origin + delta) - parentOrigin;
+
+                                if (currentVec.LengthSquared() > 1f && draggedVec.LengthSquared() > 1f)
+                                {
+                                    var deltaAngle = MathHelper.DeltaDegrees(
+                                        MathHelper.ToDegrees(currentVec),
+                                        MathHelper.ToDegrees(draggedVec));
+
+                                    if (Math.Abs(deltaAngle) > 0.001f)
+                                    {
+                                        parentItem.Rotation.AddToEachValues(deltaAngle);
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                var localDelta = ToLocalDelta(delta, transform);
+                                item.X.AddToEachValues(localDelta.X);
+                                item.Y.AddToEachValues(localDelta.Y);
+                            }
+                        }
+                    });
+
+                controllers.Add(new VideoController([pinPoint])
+                {
+                    Connection = VideoControllerPointConnection.None,
+                });
             }
 
             Controllers = controllers;
