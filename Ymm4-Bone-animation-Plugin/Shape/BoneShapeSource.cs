@@ -259,7 +259,8 @@ namespace Ymm4BoneAnimationPlugin.Shape
         }
 
         /// <summary>
-        /// パペット変形方式：1ピン＝1つのコントローラー点を配置し、直感的なピン操作を実現する。
+        /// 完全パペット変形方式：回転用・移動用の区別を全廃し、
+        /// 各関節ピンを直接掴んでドラッグするだけで自然に変形する1ピン＝1点コントローラー。
         /// </summary>
         void UpdateControllers(
             IReadOnlyList<BoneTransform> transforms,
@@ -280,10 +281,10 @@ namespace Ymm4BoneAnimationPlugin.Shape
                 if (!MathHelper.IsFinite(origin))
                     continue;
 
-                // --- 1ピン＝1点コントローラー ---
                 var isRoot = string.IsNullOrEmpty(transform.Bone.ParentId);
 
-                var pinPoint = new ControllerPoint(
+                // 単一のパペットピン（ドラッグした位置へ関節を引っ張る）
+                var puppetPin = new ControllerPoint(
                     new Vector3(origin.X, origin.Y, 0),
                     arg =>
                     {
@@ -292,32 +293,32 @@ namespace Ymm4BoneAnimationPlugin.Shape
 
                         if (item.IsIkEnabled)
                         {
-                            // IK有効時はIKターゲットをドラッグ移動
+                            // IK有効時はIKターゲットをドラッグ位置へ移動
                             item.IkTargetX.AddToEachValues(delta.X);
                             item.IkTargetY.AddToEachValues(delta.Y);
                         }
                         else if (isRoot)
                         {
-                            // ルートピン（体など）は全体を平行移動
+                            // ルートピン（体）は全体を掴んでドラッグ移動
                             var localDelta = ToLocalDelta(delta, transform);
                             item.X.AddToEachValues(localDelta.X);
                             item.Y.AddToEachValues(localDelta.Y);
                         }
                         else
                         {
-                            // 親を持つピン（手足・頭など）は、親関節を中心とした直感回転（パペット操作）
+                            // 親を持つピン（手足・頭）は親関節を中心として直感追従（パペット変形）
                             if (transformMap.TryGetValue(transform.Bone.ParentId!, out var parentTransform)
                                 && itemMap.TryGetValue(transform.Bone.ParentId!, out var parentItem))
                             {
                                 var parentOrigin = parentTransform.Origin;
                                 var currentVec = transform.Origin - parentOrigin;
-                                var draggedVec = (transform.Origin + delta) - parentOrigin;
+                                var targetVec = (transform.Origin + delta) - parentOrigin;
 
-                                if (currentVec.LengthSquared() > 1f && draggedVec.LengthSquared() > 1f)
+                                if (currentVec.LengthSquared() > 1f && targetVec.LengthSquared() > 1f)
                                 {
                                     var deltaAngle = MathHelper.DeltaDegrees(
                                         MathHelper.ToDegrees(currentVec),
-                                        MathHelper.ToDegrees(draggedVec));
+                                        MathHelper.ToDegrees(targetVec));
 
                                     if (Math.Abs(deltaAngle) > 0.001f)
                                     {
@@ -334,7 +335,7 @@ namespace Ymm4BoneAnimationPlugin.Shape
                         }
                     });
 
-                controllers.Add(new VideoController([pinPoint])
+                controllers.Add(new VideoController([puppetPin])
                 {
                     Connection = VideoControllerPointConnection.None,
                 });
