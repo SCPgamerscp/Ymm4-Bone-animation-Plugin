@@ -22,8 +22,11 @@ namespace Ymm4BoneAnimationPlugin.Views
 
         Point lastMousePos;
         bool isPanning;
-        PuppetPinViewModel? draggingPin;
-        Point pinDragStartOffset;
+
+        PuppetImageLayerViewModel? draggingJointLayer;
+        Point jointDragStartOffset;
+
+        PuppetImageLayerViewModel? connectingSourceLayer;
 
         PuppetImageLayerViewModel? draggingLayer;
         Point layerDragStartOffset;
@@ -34,9 +37,8 @@ namespace Ymm4BoneAnimationPlugin.Views
             InitializeComponent();
             DataContext = viewModel = vm;
 
-            vm.Pins.CollectionChanged += OnPinsCollectionChanged;
+            vm.ImageLayers.CollectionChanged += OnLayersCollectionChanged;
             vm.Bones.CollectionChanged += OnBonesCollectionChanged;
-            vm.ImageLayers.CollectionChanged += OnImageLayersCollectionChanged;
 
             Loaded += (s, e) =>
             {
@@ -76,12 +78,7 @@ namespace Ymm4BoneAnimationPlugin.Views
                 }
                 else if (e.Key == Key.Delete)
                 {
-                    if (viewModel.SelectedPin != null)
-                    {
-                        viewModel.DeleteSelectedPin();
-                        e.Handled = true;
-                    }
-                    else if (viewModel.SelectedLayer != null)
+                    if (viewModel.SelectedLayer != null)
                     {
                         viewModel.DeleteSelectedLayer();
                         e.Handled = true;
@@ -90,15 +87,19 @@ namespace Ymm4BoneAnimationPlugin.Views
             };
         }
 
-        void OnPinsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) => RenderPins();
+        void OnLayersCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        {
+            RenderImages();
+            RenderJointPins();
+        }
+
         void OnBonesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) => RenderBones();
-        void OnImageLayersCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) => RenderImages();
 
         void RenderAll()
         {
             RenderImages();
             RenderBones();
-            RenderPins();
+            RenderJointPins();
         }
 
         void RenderImages()
@@ -158,7 +159,7 @@ namespace Ymm4BoneAnimationPlugin.Views
                             UpdateLayerPos();
                     };
 
-                    // 右クリックメニュー（重なり順・削除）
+                    // 右クリックメニュー（重なり順・削除・親子解除）
                     var contextMenu = new ContextMenu();
                     var mFront = new MenuItem { Header = "⏫ 最前面へ" };
                     mFront.Click += (_, _) => { viewModel.SelectedLayer = layer; viewModel.BringSelectedLayerToFront(); };
@@ -168,6 +169,8 @@ namespace Ymm4BoneAnimationPlugin.Views
                     mBackward.Click += (_, _) => { viewModel.SelectedLayer = layer; viewModel.ChangeSelectedLayerZOrder(-1); };
                     var mBack = new MenuItem { Header = "⏬ 最背面へ" };
                     mBack.Click += (_, _) => { viewModel.SelectedLayer = layer; viewModel.SendSelectedLayerToBack(); };
+                    var mUnlink = new MenuItem { Header = "❌ 親子結合を解除" };
+                    mUnlink.Click += (_, _) => { viewModel.SetLayerParent(layer, null); };
                     var mDelete = new MenuItem { Header = "🗑 パーツ削除" };
                     mDelete.Click += (_, _) => { viewModel.SelectedLayer = layer; viewModel.DeleteSelectedLayer(); };
 
@@ -176,13 +179,14 @@ namespace Ymm4BoneAnimationPlugin.Views
                     contextMenu.Items.Add(mBackward);
                     contextMenu.Items.Add(mBack);
                     contextMenu.Items.Add(new Separator());
+                    contextMenu.Items.Add(mUnlink);
                     contextMenu.Items.Add(mDelete);
                     container.ContextMenu = contextMenu;
 
                     container.Children.Add(image);
                     UpdateLayerPos();
 
-                    // レイヤーのマウスイベント（選択＆ドラッグ移動）
+                    // 画像パーツのマウスイベント（選択＆ドラッグ移動）
                     container.MouseDown += (s, e) =>
                     {
                         if (e.ChangedButton == MouseButton.Right)
@@ -193,9 +197,10 @@ namespace Ymm4BoneAnimationPlugin.Views
                         {
                             if (viewModel.IsAddPinAndBoneMode)
                             {
-                                // ピン・ボーン作成モード時はクリック位置にピンを打って自動連結
+                                // 関節ピン配置モード：クリック位置をこのパーツの関節位置に設定し、自動結合
                                 var canvasPos = e.GetPosition(MainCanvas);
-                                viewModel.AddPinAt(canvasPos.X, canvasPos.Y);
+                                viewModel.SelectedLayer = layer;
+                                layer.SetJointPos(canvasPos.X, canvasPos.Y);
                                 e.Handled = true;
                             }
                             else
@@ -257,8 +262,8 @@ namespace Ymm4BoneAnimationPlugin.Views
             {
                 var line = new Line
                 {
-                    Stroke = new SolidColorBrush(Color.FromArgb(220, 33, 150, 243)),
-                    StrokeThickness = 4,
+                    Stroke = new SolidColorBrush(Color.FromArgb(230, 33, 150, 243)),
+                    StrokeThickness = 4.5,
                     IsHitTestVisible = false,
                 };
 
@@ -276,24 +281,24 @@ namespace Ymm4BoneAnimationPlugin.Views
             }
         }
 
-        void RenderPins()
+        void RenderJointPins()
         {
-            PinsCanvas.Children.Clear();
-            foreach (var pin in viewModel.Pins)
+            JointPinsCanvas.Children.Clear();
+            foreach (var layer in viewModel.ImageLayers)
             {
-                var pinElement = CreatePinVisual(pin);
-                PinsCanvas.Children.Add(pinElement);
+                var pinElement = CreateJointPinVisual(layer);
+                JointPinsCanvas.Children.Add(pinElement);
             }
         }
 
-        FrameworkElement CreatePinVisual(PuppetPinViewModel pin)
+        FrameworkElement CreateJointPinVisual(PuppetImageLayerViewModel layer)
         {
             var container = new Grid
             {
-                Width = 24,
-                Height = 24,
+                Width = 26,
+                Height = 26,
                 Cursor = Cursors.Hand,
-                DataContext = pin,
+                DataContext = layer,
             };
 
             var outerCircle = new Ellipse
@@ -312,7 +317,7 @@ namespace Ymm4BoneAnimationPlugin.Views
 
             var labelBorder = new Border
             {
-                Background = new SolidColorBrush(Color.FromArgb(180, 20, 20, 20)),
+                Background = new SolidColorBrush(Color.FromArgb(190, 20, 20, 20)),
                 CornerRadius = new CornerRadius(3),
                 Padding = new Thickness(4, 1, 4, 1),
                 HorizontalAlignment = HorizontalAlignment.Center,
@@ -323,7 +328,7 @@ namespace Ymm4BoneAnimationPlugin.Views
 
             var label = new TextBlock
             {
-                Text = pin.DisplayName,
+                Text = layer.PartName,
                 Foreground = Brushes.White,
                 FontSize = 10,
                 FontWeight = FontWeights.Bold,
@@ -332,51 +337,68 @@ namespace Ymm4BoneAnimationPlugin.Views
 
             void UpdateVisualState()
             {
-                if (pin.IsHighlighted)
+                if (layer.IsSelected)
                 {
-                    outerCircle.Fill = new SolidColorBrush(Color.FromArgb(235, 255, 102, 0));
+                    outerCircle.Fill = new SolidColorBrush(Color.FromArgb(240, 255, 102, 0));
                     outerCircle.Stroke = Brushes.White;
                 }
                 else
                 {
-                    outerCircle.Fill = new SolidColorBrush(Color.FromArgb(210, 0, 122, 204));
+                    outerCircle.Fill = new SolidColorBrush(Color.FromArgb(220, 0, 122, 204));
                     outerCircle.Stroke = Brushes.White;
                 }
             }
 
-            pin.PropertyChanged += (s, e) =>
+            void UpdatePosition()
             {
-                if (e.PropertyName is nameof(PuppetPinViewModel.IsSelected) or nameof(PuppetPinViewModel.IsHighlighted))
+                Canvas.SetLeft(container, layer.JointX - 13);
+                Canvas.SetTop(container, layer.JointY - 13);
+                Canvas.SetZIndex(container, 1000 + layer.ZOrder);
+            }
+
+            layer.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName is nameof(PuppetImageLayerViewModel.IsSelected))
                     UpdateVisualState();
-                else if (e.PropertyName is nameof(PuppetPinViewModel.Name) or nameof(PuppetPinViewModel.DisplayName) or nameof(PuppetPinViewModel.ImagePath))
-                    label.Text = pin.DisplayName;
-                else if (e.PropertyName is nameof(PuppetPinViewModel.X) or nameof(PuppetPinViewModel.Y))
-                {
-                    Canvas.SetLeft(container, pin.X - 12);
-                    Canvas.SetTop(container, pin.Y - 12);
-                }
+                else if (e.PropertyName is nameof(PuppetImageLayerViewModel.PartName))
+                    label.Text = layer.PartName;
+                else if (e.PropertyName is nameof(PuppetImageLayerViewModel.JointX) or nameof(PuppetImageLayerViewModel.JointY) or nameof(PuppetImageLayerViewModel.ZOrder))
+                    UpdatePosition();
             };
 
             UpdateVisualState();
             container.Children.Add(outerCircle);
             container.Children.Add(innerCircle);
             container.Children.Add(labelBorder);
+            UpdatePosition();
 
-            Canvas.SetLeft(container, pin.X - 12);
-            Canvas.SetTop(container, pin.Y - 12);
+            bool jointMoved = false;
 
-            bool pinMoved = false;
-
-            // ピンのマウスイベント（選択＆ドラッグ移動）
+            // 関節ピンのマウスイベント（選択＆関節ドラッグ移動＆ボーン結線）
             container.MouseDown += (s, e) =>
             {
                 if (e.ChangedButton == MouseButton.Left)
                 {
-                    viewModel.SelectedPin = pin;
-                    draggingPin = pin;
-                    pinMoved = false;
-                    var canvasPos = e.GetPosition(MainCanvas);
-                    pinDragStartOffset = new Point(pin.X - canvasPos.X, pin.Y - canvasPos.Y);
+                    viewModel.SelectedLayer = layer;
+
+                    if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+                    {
+                        // Shiftドラッグでボーン結線開始
+                        connectingSourceLayer = layer;
+                        ConnectingLine.X1 = layer.JointX;
+                        ConnectingLine.Y1 = layer.JointY;
+                        ConnectingLine.X2 = layer.JointX;
+                        ConnectingLine.Y2 = layer.JointY;
+                        ConnectingLine.Visibility = Visibility.Visible;
+                    }
+                    else
+                    {
+                        // 通常ドラッグで関節位置（アンカー）を移動
+                        draggingJointLayer = layer;
+                        jointMoved = false;
+                        var canvasPos = e.GetPosition(MainCanvas);
+                        jointDragStartOffset = new Point(layer.JointX - canvasPos.X, layer.JointY - canvasPos.Y);
+                    }
                     container.CaptureMouse();
                     e.Handled = true;
                 }
@@ -384,25 +406,46 @@ namespace Ymm4BoneAnimationPlugin.Views
 
             container.MouseMove += (s, e) =>
             {
-                if (draggingPin == pin)
+                if (draggingJointLayer == layer)
                 {
-                    if (!pinMoved)
+                    if (!jointMoved)
                     {
                         viewModel.PushSnapshot();
-                        pinMoved = true;
+                        jointMoved = true;
                     }
                     var canvasPos = e.GetPosition(MainCanvas);
-                    pin.X = Math.Round(canvasPos.X + pinDragStartOffset.X, 1);
-                    pin.Y = Math.Round(canvasPos.Y + pinDragStartOffset.Y, 1);
+                    var targetX = canvasPos.X + jointDragStartOffset.X;
+                    var targetY = canvasPos.Y + jointDragStartOffset.Y;
+                    layer.SetJointPos(targetX, targetY);
+                    e.Handled = true;
+                }
+                else if (connectingSourceLayer == layer)
+                {
+                    var canvasPos = e.GetPosition(MainCanvas);
+                    ConnectingLine.X2 = canvasPos.X;
+                    ConnectingLine.Y2 = canvasPos.Y;
                     e.Handled = true;
                 }
             };
 
             container.MouseUp += (s, e) =>
             {
-                if (draggingPin == pin)
+                if (draggingJointLayer == layer)
                 {
-                    draggingPin = null;
+                    draggingJointLayer = null;
+                    container.ReleaseMouseCapture();
+                    e.Handled = true;
+                }
+                else if (connectingSourceLayer != null)
+                {
+                    ConnectingLine.Visibility = Visibility.Collapsed;
+                    var canvasPos = e.GetPosition(MainCanvas);
+                    var hitLayer = FindLayerByJointAt(canvasPos);
+                    if (hitLayer != null && hitLayer != connectingSourceLayer)
+                    {
+                        viewModel.ConnectLayers(connectingSourceLayer, hitLayer);
+                    }
+                    connectingSourceLayer = null;
                     container.ReleaseMouseCapture();
                     e.Handled = true;
                 }
@@ -411,7 +454,19 @@ namespace Ymm4BoneAnimationPlugin.Views
             return container;
         }
 
-        #region キャンバスマウス操作 (ズーム・パン・ピン打ち)
+        PuppetImageLayerViewModel? FindLayerByJointAt(Point canvasPos)
+        {
+            foreach (var layer in viewModel.ImageLayers)
+            {
+                var dx = layer.JointX - canvasPos.X;
+                var dy = layer.JointY - canvasPos.Y;
+                if (dx * dx + dy * dy <= 26 * 26)
+                    return layer;
+            }
+            return null;
+        }
+
+        #region キャンバスマウス操作 (ズーム・パン・ピン配置)
 
         void Canvas_MouseWheel(object sender, MouseWheelEventArgs e)
         {
@@ -440,9 +495,9 @@ namespace Ymm4BoneAnimationPlugin.Views
             }
             else if (e.ChangedButton == MouseButton.Left)
             {
-                // クリックされた要素がピンや画像パーツであれば親の処理はスキップ
+                // クリック要素がピンや画像ならスキップ
                 var src = e.OriginalSource as DependencyObject;
-                if (IsDescendantOf(src, PinsCanvas) || IsDescendantOf(src, ImageLayerCanvas))
+                if (IsDescendantOf(src, JointPinsCanvas) || IsDescendantOf(src, ImageLayerCanvas))
                 {
                     return;
                 }
@@ -451,14 +506,13 @@ namespace Ymm4BoneAnimationPlugin.Views
 
                 if (viewModel.IsAddPinAndBoneMode)
                 {
-                    // ピン・ボーン作成モード：背景クリックでもピンを打って自動連結
-                    viewModel.AddPinAt(canvasPos.X, canvasPos.Y);
+                    // 関節ピン配置モード：クリック位置にあるパーツの関節を設定
+                    viewModel.PlaceJointAt(canvasPos.X, canvasPos.Y);
                     e.Handled = true;
                 }
                 else
                 {
-                    // 移動・選択モードで背景をクリックした場合は選択解除
-                    viewModel.SelectedPin = null;
+                    // 移動・選択モードで背景クリック時は選択解除
                     viewModel.SelectedLayer = null;
                 }
             }
@@ -526,32 +580,6 @@ namespace Ymm4BoneAnimationPlugin.Views
         }
 
         #endregion
-
-        void BrowsePinImage_Click(object sender, RoutedEventArgs e)
-        {
-            if (viewModel.SelectedPin == null)
-                return;
-
-            var dialog = new Microsoft.Win32.OpenFileDialog
-            {
-                Title = "ピンに割り当てる画像の選択",
-                Filter = "画像ファイル (*.png;*.jpg;*.jpeg;*.bmp;*.webp;*.svg)|*.png;*.jpg;*.jpeg;*.bmp;*.webp;*.svg|すべてのファイル (*.*)|*.*",
-            };
-
-            if (dialog.ShowDialog() == true && !string.IsNullOrWhiteSpace(dialog.FileName))
-            {
-                viewModel.SelectedPin.ImagePath = dialog.FileName;
-                if (!viewModel.ImageLayers.Any(l => l.FilePath.Equals(dialog.FileName, StringComparison.OrdinalIgnoreCase)))
-                {
-                    viewModel.ImageLayers.Add(new PuppetImageLayerViewModel(dialog.FileName)
-                    {
-                        X = viewModel.SelectedPin.X,
-                        Y = viewModel.SelectedPin.Y,
-                        ZOrder = viewModel.SelectedPin.ZOrder,
-                    });
-                }
-            }
-        }
 
         void ApplyButton_Click(object sender, RoutedEventArgs e)
         {

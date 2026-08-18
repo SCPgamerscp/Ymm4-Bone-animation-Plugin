@@ -5,35 +5,33 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Ymm4BoneAnimationPlugin.Views"
         mc:Ignorable="d"
-        Title="パペット ボーン エディタ"
-        Height="760" Width="1120"
-        MinHeight="550" MinWidth="750"
+        Title="2Dパペット ボーン結合エディタ"
+        Height="780" Width="1100"
+        MinHeight="500" MinWidth="800"
         WindowStartupLocation="CenterScreen"
-        Background="#1E1E1E" Foreground="#FFFFFF"
-        d:DataContext="{d:DesignInstance Type=local:PuppetEditorViewModel}">
+        Background="#1E1E1E" Foreground="#FFFFFF">
 
     <Window.Resources>
-        <!-- ダークテーマ用ボタンスタイル -->
         <Style TargetType="Button">
-            <Setter Property="Background" Value="#2D2D30"/>
-            <Setter Property="Foreground" Value="#EEEEEE"/>
+            <Setter Property="Background" Value="#333337"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
             <Setter Property="BorderBrush" Value="#3F3F46"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="Padding" Value="10,5"/>
             <Setter Property="Margin" Value="2"/>
             <Setter Property="Cursor" Value="Hand"/>
-            <Style.Triggers>
-                <Trigger Property="IsEnabled" Value="False">
-                    <Setter Property="Opacity" Value="0.4"/>
-                </Trigger>
-            </Style.Triggers>
         </Style>
 
         <Style TargetType="RadioButton">
-            <Setter Property="Foreground" Value="#EEEEEE"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
             <Setter Property="Margin" Value="4,0"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="FontSize" Value="12"/>
         </Style>
     </Window.Resources>
 
@@ -44,8 +42,8 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- 上部ツールバー -->
-        <Border Grid.Row="0" Background="#252526" BorderBrush="#3F3F46" BorderThickness="0,0,0,1" Padding="8,6">
+        <!-- ツールバー -->
+        <Border Grid.Row="0" Background="#252526" BorderBrush="#3F3F46" BorderThickness="0,0,0,1" Padding="6,4">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -59,44 +57,48 @@
                     <Button Content="↪ 進む" Command="{Binding RedoCommand}" ToolTip="やり直す (Ctrl+Y / Ctrl+Shift+Z)"/>
                     <Separator Width="1" Margin="6,2" Background="#3F3F46"/>
 
-                    <RadioButton Content="📍 ピン・ボーン作成 (クリック)" IsChecked="{Binding IsAddPinAndBoneMode}" Padding="6,2"
-                                 ToolTip="パーツ画像上の関節位置をクリックしてピンを打ちます。直前のピンと自動的に骨組み（ボーン）が繋がります"/>
+                    <RadioButton Content="📍 関節ピン配置 (クリック)" IsChecked="{Binding IsAddPinAndBoneMode}" Padding="6,2"
+                                 ToolTip="パーツ画像の回転中心（関節）をクリックしてピンを置きます。連続クリックで自動ボーン結線"/>
                     <RadioButton Content="🖐 移動・選択" IsChecked="{Binding IsSelectMoveMode}" Padding="6,2"
-                                 ToolTip="画像パーツやピンをドラッグ移動したり、クリックして選択します"/>
+                                 ToolTip="画像パーツや関節ピンをドラッグ移動したり、クリックして選択します"/>
                     <Separator Width="1" Margin="6,2" Background="#3F3F46"/>
 
                     <Button Content="📁 画像追加" Command="{Binding AddImagesCommand}" ToolTip="パーツ画像を追加します（直接ドラッグ＆ドロップも可能）"/>
-                    <Button Content="🗑 ピン削除" Command="{Binding DeleteSelectedCommand}" ToolTip="選択中のピンを削除します (Deleteキー)"/>
-                    <Button Content="🔄 全クリア" Command="{Binding ClearAllCommand}" ToolTip="すべてのピンと画像をクリアします"/>
+                    <Button Content="🔄 全クリア" Command="{Binding ClearAllCommand}" ToolTip="すべてのパーツをクリアします"/>
                     <Button Content="🔍 リセット" Command="{Binding ResetViewCommand}" ToolTip="表示位置と倍率を初期化します"/>
                 </StackPanel>
 
                 <!-- ガイド説明 -->
                 <TextBlock Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center"
                            Foreground="#888888" FontSize="11"
-                           Text="ホイール: ズーム | 中/右ドラッグ: 平行移動 | 画像/ピンをクリックで選択してドラッグ配置"/>
+                           Text="ホイール: ズーム | 中/右ドラッグ: 画面移動 | 関節ピンをドラッグして関節位置を調整"/>
 
                 <!-- 完了 / キャンセルボタン -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal">
-                    <Button Content="✔ 適用して閉じる" Click="ApplyButton_Click" Background="#0E639C" BorderBrush="#1177BB" FontWeight="Bold" Padding="12,5"/>
+                    <Button Content="✔ 適用して閉じる" Click="ApplyButton_Click" Background="#0E639C" BorderBrush="#1177BB" FontWeight="Bold" Padding="14,5"/>
                     <Button Content="✖ キャンセル" Click="CancelButton_Click"/>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- メインエディタ領域（キャンバス + 右側プロパティ） -->
+        <!-- メインコンテンツエリア -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="280"/>
+                <ColumnDefinition Width="320"/>
             </Grid.ColumnDefinitions>
 
-            <!-- キャンバス領域（ズーム・パン対応） -->
-            <Border Grid.Column="0" x:Name="CanvasContainer" Background="#181818" ClipToBounds="True"
-                    AllowDrop="True" Drop="Canvas_Drop" DragOver="Canvas_DragOver"
+            <!-- キャンバス表示エリア -->
+            <Border Grid.Column="0" Background="#141414" ClipToBounds="True"
+                    AllowDrop="True"
+                    DragOver="Canvas_DragOver" Drop="Canvas_Drop"
                     MouseWheel="Canvas_MouseWheel"
-                    MouseDown="Canvas_MouseDown" MouseMove="Canvas_MouseMove" MouseUp="Canvas_MouseUp">
-                <Canvas x:Name="MainCanvas" Background="Transparent" Focusable="True">
+                    MouseDown="Canvas_MouseDown"
+                    MouseMove="Canvas_MouseMove"
+                    MouseUp="Canvas_MouseUp"
+                    x:Name="CanvasContainer">
+
+                <Canvas x:Name="MainCanvas">
                     <Canvas.RenderTransform>
                         <TransformGroup>
                             <ScaleTransform x:Name="CanvasScale" ScaleX="{Binding Zoom}" ScaleY="{Binding Zoom}"/>
@@ -104,99 +106,27 @@
                         </TransformGroup>
                     </Canvas.RenderTransform>
 
-                    <!-- 画像レイヤー描画用コンテナ -->
+                    <!-- 画像パーツ描画レイヤー -->
                     <Canvas x:Name="ImageLayerCanvas"/>
 
-                    <!-- ボーン接続線描画用コンテナ -->
+                    <!-- ボーン骨組み接続線 -->
                     <Canvas x:Name="BoneLinesCanvas"/>
 
-                    <!-- ピン描画用コンテナ -->
-                    <Canvas x:Name="PinsCanvas"/>
+                    <!-- 関節ピン描画レイヤー -->
+                    <Canvas x:Name="JointPinsCanvas"/>
 
-                    <!-- 接続ドラッグ中のプレビュー線 -->
-                    <Line x:Name="ConnectingLine" Stroke="#FF9800" StrokeThickness="2.5" StrokeDashArray="4 2" Visibility="Collapsed"/>
+                    <!-- ドラッグ接続時の仮ライン -->
+                    <Line x:Name="ConnectingLine" Stroke="#FFCC00" StrokeThickness="2.5" StrokeDashArray="4 2" Visibility="Collapsed"/>
                 </Canvas>
             </Border>
 
-            <!-- 右側：設定サイドバー（ピン / 画像パーツ） -->
-            <Border Grid.Column="1" Background="#252526" BorderBrush="#3F3F46" BorderThickness="1,0,0,0" Padding="12">
+            <!-- 右側：ボーン・パーツ設定パネル -->
+            <Border Grid.Column="1" Background="#252526" BorderBrush="#3F3F46" BorderThickness="1,0,0,0" Padding="10">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel>
-                        <!-- ピン設定 -->
-                        <GroupBox Header="📍 選択中ピンの設定" Foreground="#CCCCCC" BorderBrush="#3F3F46" Margin="0,0,0,12" Padding="8">
-                            <StackPanel IsEnabled="{Binding SelectedPin, Converter={x:Static local:PuppetEditorWindow.NotNullConverter}}">
-                                <TextBlock Text="ピン名" Foreground="#AAAAAA" Margin="0,2,0,2"/>
-                                <TextBox Text="{Binding SelectedPin.Name, UpdateSourceTrigger=PropertyChanged}" Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="4"/>
 
-                                <Grid Margin="0,6,0,2">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="8"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0">
-                                        <TextBlock Text="X 座標" Foreground="#AAAAAA"/>
-                                        <TextBox Text="{Binding SelectedPin.X, UpdateSourceTrigger=PropertyChanged}" Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="4"/>
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="2">
-                                        <TextBlock Text="Y 座標" Foreground="#AAAAAA"/>
-                                        <TextBox Text="{Binding SelectedPin.Y, UpdateSourceTrigger=PropertyChanged}" Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="4"/>
-                                    </StackPanel>
-                                </Grid>
-
-                                <Grid Margin="0,6,0,2">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="8"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0">
-                                        <TextBlock Text="アンカーX (0~1)" Foreground="#AAAAAA"/>
-                                        <TextBox Text="{Binding SelectedPin.AnchorX, UpdateSourceTrigger=PropertyChanged}" Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="4"/>
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="2">
-                                        <TextBlock Text="アンカーY (0~1)" Foreground="#AAAAAA"/>
-                                        <TextBox Text="{Binding SelectedPin.AnchorY, UpdateSourceTrigger=PropertyChanged}" Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="4"/>
-                                    </StackPanel>
-                                </Grid>
-
-                                <TextBlock Text="重なり順 (Z順)" Foreground="#AAAAAA" Margin="0,6,0,2"/>
-                                <TextBox Text="{Binding SelectedPin.ZOrder, UpdateSourceTrigger=PropertyChanged}" Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="4"/>
-
-                                <TextBlock Text="割り当て画像パーツ" Foreground="#AAAAAA" Margin="0,6,0,2"/>
-                                <ComboBox ItemsSource="{Binding ImageLayers}"
-                                          SelectedValue="{Binding SelectedPin.ImagePath, Mode=TwoWay}"
-                                          SelectedValuePath="FilePath"
-                                          DisplayMemberPath="FileName"
-                                          Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="4"/>
-                                <Button Content="別の画像ファイルを選択..." Click="BrowsePinImage_Click" Margin="0,4,0,0" HorizontalAlignment="Right" FontSize="11"/>
-
-                                <Separator Margin="0,10" Background="#3F3F46"/>
-
-                                <!-- 口パク・目パチ設定 -->
-                                <TextBlock Text="👄 口パク・目パチ設定" FontWeight="Bold" Foreground="#CCCCCC" Margin="0,2,0,4"/>
-                                <CheckBox Content="口パク連動" IsChecked="{Binding SelectedPin.IsLipSyncEnabled}" Foreground="#EEEEEE" Margin="0,2,0,4"/>
-                                <TextBlock Text="口パク差分名 (開,半開,閉)" Foreground="#AAAAAA" Margin="0,2,0,2"/>
-                                <TextBox Text="{Binding SelectedPin.LipSyncSlotNames, UpdateSourceTrigger=PropertyChanged}" Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="4"/>
-
-                                <TextBlock Text="口パク縦伸縮 (0~1)" Foreground="#AAAAAA" Margin="0,4,0,2"/>
-                                <TextBox Text="{Binding SelectedPin.LipSyncScaleInfluence, UpdateSourceTrigger=PropertyChanged}" Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="4"/>
-
-                                <CheckBox Content="目パチ連動" IsChecked="{Binding SelectedPin.IsBlinkEnabled}" Foreground="#EEEEEE" Margin="0,8,0,4"/>
-                                <TextBlock Text="目パチ差分名 (開,半開,閉)" Foreground="#AAAAAA" Margin="0,2,0,2"/>
-                                <TextBox Text="{Binding SelectedPin.BlinkSlotNames, UpdateSourceTrigger=PropertyChanged}" Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="4"/>
-
-                                <Separator Margin="0,10" Background="#3F3F46"/>
-
-                                <!-- IK・物理設定 -->
-                                <TextBlock Text="🦴 IK・物理演算" FontWeight="Bold" Foreground="#CCCCCC" Margin="0,2,0,4"/>
-                                <CheckBox Content="IKを使用 (手足の先端)" IsChecked="{Binding SelectedPin.IsIkEnabled}" Foreground="#EEEEEE" Margin="0,2,0,4"/>
-                                <CheckBox Content="揺れものにする (物理演算)" IsChecked="{Binding SelectedPin.IsPhysicsEnabled}" Foreground="#EEEEEE" Margin="0,2,0,4"/>
-                            </StackPanel>
-                        </GroupBox>
-
-                        <!-- レイヤー一覧（重なり順） -->
-                        <GroupBox Header="📚 パーツレイヤー一覧 (重なり順)" Foreground="#CCCCCC" BorderBrush="#3F3F46" Margin="0,0,0,12" Padding="8">
+                        <!-- レイヤー一覧（重なり順 & ボーン階層） -->
+                        <GroupBox Header="📚 パーツレイヤー一覧 (画像＝ボーン)" Foreground="#CCCCCC" BorderBrush="#3F3F46" Margin="0,0,0,12" Padding="8">
                             <StackPanel>
                                 <WrapPanel Margin="0,0,0,6">
                                     <Button Content="⏫ 最前面" Command="{Binding BringLayerToFrontCommand}" Padding="5,2" Margin="0,0,3,0" ToolTip="一番手前に表示"/>
@@ -205,7 +135,7 @@
                                     <Button Content="⏬ 最背面" Command="{Binding SendLayerToBackCommand}" Padding="5,2" Margin="0,0,3,0" ToolTip="一番奥に表示"/>
                                     <Button Content="🗑 削除" Command="{Binding DeleteLayerCommand}" Padding="5,2" ToolTip="パーツを削除"/>
                                 </WrapPanel>
-                                <Border BorderBrush="#3F3F46" BorderThickness="1" Background="#1E1E1E" Height="150">
+                                <Border BorderBrush="#3F3F46" BorderThickness="1" Background="#1E1E1E" Height="140">
                                     <ListBox ItemsSource="{Binding ImageLayers}" SelectedItem="{Binding SelectedLayer, Mode=TwoWay}"
                                              Background="Transparent" BorderThickness="0" Foreground="#EEEEEE">
                                         <ListBox.ItemTemplate>
@@ -224,28 +154,28 @@
                                                             <Image Source="{Binding Thumbnail}" Stretch="Uniform" Margin="1"/>
                                                         </Border>
 
-                                                        <!-- ファイル名とサイズ -->
+                                                        <!-- パーツ名とZ順 -->
                                                         <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center">
-                                                            <TextBlock x:Name="FileNameText" Text="{Binding FileName}" FontWeight="Bold" FontSize="11" TextTrimming="CharacterEllipsis" Foreground="#EEEEEE"/>
+                                                            <TextBlock x:Name="FileNameText" Text="{Binding PartName}" FontWeight="Bold" FontSize="11" TextTrimming="CharacterEllipsis" Foreground="#EEEEEE"/>
                                                             <TextBlock Text="{Binding ZOrder, StringFormat='Z順: {0}'}" Foreground="#888888" FontSize="10"/>
                                                         </StackPanel>
 
-                                                        <!-- 割り当てピン情報バッジ -->
-                                                        <Border x:Name="PinBadge" Grid.Column="2" Background="#2A3540" BorderBrush="#3584E4" BorderThickness="1" CornerRadius="3" Padding="5,2" Margin="4,0,0,0" VerticalAlignment="Center">
-                                                            <TextBlock x:Name="PinBadgeText" Text="{Binding AssignedPinName}" Foreground="#78AEED" FontSize="10" FontWeight="Bold"/>
+                                                        <!-- 親ボーン情報バッジ -->
+                                                        <Border x:Name="ParentBadge" Grid.Column="2" Background="#2A3540" BorderBrush="#3584E4" BorderThickness="1" CornerRadius="3" Padding="5,2" Margin="4,0,0,0" VerticalAlignment="Center">
+                                                            <TextBlock x:Name="ParentBadgeText" Text="{Binding ParentName, StringFormat='親: {0}'}" Foreground="#78AEED" FontSize="10" FontWeight="Bold"/>
                                                         </Border>
                                                     </Grid>
                                                 </Border>
 
                                                 <DataTemplate.Triggers>
-                                                    <!-- ピン選択時またはパーツ選択時にピカッとオレンジ色に発光！ -->
-                                                    <DataTrigger Binding="{Binding IsHighlighted}" Value="True">
+                                                    <!-- パーツ選択時にピカッとオレンジ色に発光！ -->
+                                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
                                                         <Setter TargetName="ItemBorder" Property="Background" Value="#4D2800"/>
                                                         <Setter TargetName="ItemBorder" Property="BorderBrush" Value="#FF8800"/>
                                                         <Setter TargetName="FileNameText" Property="Foreground" Value="#FFAA33"/>
-                                                        <Setter TargetName="PinBadge" Property="Background" Value="#803300"/>
-                                                        <Setter TargetName="PinBadge" Property="BorderBrush" Value="#FFAA00"/>
-                                                        <Setter TargetName="PinBadgeText" Property="Foreground" Value="#FFDD66"/>
+                                                        <Setter TargetName="ParentBadge" Property="Background" Value="#803300"/>
+                                                        <Setter TargetName="ParentBadge" Property="BorderBrush" Value="#FFAA00"/>
+                                                        <Setter TargetName="ParentBadgeText" Property="Foreground" Value="#FFDD66"/>
                                                     </DataTrigger>
                                                 </DataTemplate.Triggers>
                                             </DataTemplate>
@@ -255,43 +185,69 @@
                             </StackPanel>
                         </GroupBox>
 
-                        <!-- 画像パーツ設定 -->
-                        <GroupBox Header="🖼 選択中画像パーツの設定" Foreground="#CCCCCC" BorderBrush="#3F3F46" Margin="0,0,0,12" Padding="8">
+                        <!-- 選択中パーツのボーン結合設定 -->
+                        <GroupBox Header="🦴 ボーン結合（親子関係の設定）" Foreground="#CCCCCC" BorderBrush="#3F3F46" Margin="0,0,0,12" Padding="8">
                             <StackPanel IsEnabled="{Binding SelectedLayer, Converter={x:Static local:PuppetEditorWindow.NotNullConverter}}">
-                                <TextBlock Text="ファイル名" Foreground="#AAAAAA" Margin="0,2,0,2"/>
-                                <TextBox Text="{Binding SelectedLayer.FileName, Mode=OneWay}" Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="4" IsReadOnly="True"/>
+                                <TextBlock Text="選択中パーツ名" Foreground="#AAAAAA" Margin="0,2,0,2"/>
+                                <TextBox Text="{Binding SelectedLayer.PartName, Mode=OneWay}" Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="4" IsReadOnly="True" FontWeight="Bold"/>
 
-                                <Grid Margin="0,6,0,2">
+                                <TextBlock Text="結合する親パーツ（親ボーン）" Foreground="#AAAAAA" Margin="0,6,0,2"/>
+                                <ComboBox ItemsSource="{Binding AvailableParents}"
+                                          SelectedValue="{Binding SelectedLayer.ParentId, Mode=TwoWay}"
+                                          SelectedValuePath="Id"
+                                          DisplayMemberPath="Name"
+                                          Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="4"/>
+                                <Button Content="❌ 親子結合を解除（ルートにする）" Command="{Binding UnlinkParentCommand}" Margin="0,4,0,0" HorizontalAlignment="Right" FontSize="11"/>
+
+                                <Separator Margin="0,8" Background="#3F3F46"/>
+
+                                <!-- 関節ピン（回転中心・アンカー） -->
+                                <TextBlock Text="📍 関節位置（回転の中心）" FontWeight="Bold" Foreground="#CCCCCC" Margin="0,2,0,4"/>
+                                <TextBlock Text="※ キャンバス上のピンを直接ドラッグしても調整できます" Foreground="#888888" FontSize="10" Margin="0,0,0,4"/>
+                                <Grid Margin="0,2,0,2">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="8"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0">
-                                        <TextBlock Text="X 位置" Foreground="#AAAAAA"/>
-                                        <TextBox Text="{Binding SelectedLayer.X, UpdateSourceTrigger=PropertyChanged}" Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="4"/>
+                                        <TextBlock Text="アンカーX (0~1)" Foreground="#AAAAAA" FontSize="11"/>
+                                        <TextBox Text="{Binding SelectedLayer.AnchorX, UpdateSourceTrigger=PropertyChanged}" Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="3"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="2">
-                                        <TextBlock Text="Y 位置" Foreground="#AAAAAA"/>
-                                        <TextBox Text="{Binding SelectedLayer.Y, UpdateSourceTrigger=PropertyChanged}" Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="4"/>
+                                        <TextBlock Text="アンカーY (0~1)" Foreground="#AAAAAA" FontSize="11"/>
+                                        <TextBox Text="{Binding SelectedLayer.AnchorY, UpdateSourceTrigger=PropertyChanged}" Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="3"/>
                                     </StackPanel>
                                 </Grid>
 
-                                <TextBlock Text="前後関係 (重なり順)" Foreground="#AAAAAA" Margin="0,6,0,2"/>
-                                <WrapPanel Margin="0,2,0,4">
-                                    <Button Content="⏫ 最前面" Command="{Binding BringLayerToFrontCommand}" Padding="5,2" Margin="0,0,3,2"/>
-                                    <Button Content="▲ 前面へ" Command="{Binding BringLayerForwardCommand}" Padding="5,2" Margin="0,0,3,2"/>
-                                    <Button Content="▼ 背面へ" Command="{Binding SendLayerBackwardCommand}" Padding="5,2" Margin="0,0,3,2"/>
-                                    <Button Content="⏬ 最背面" Command="{Binding SendLayerToBackCommand}" Padding="5,2" Margin="0,0,3,2"/>
-                                    <Button Content="🗑 削除" Command="{Binding DeleteLayerCommand}" Padding="5,2" Margin="0,0,0,2"/>
-                                </WrapPanel>
+                                <Separator Margin="0,8" Background="#3F3F46"/>
+
+                                <!-- 口パク・目パチ設定 -->
+                                <TextBlock Text="👄 口パク・目パチ設定" FontWeight="Bold" Foreground="#CCCCCC" Margin="0,2,0,4"/>
+                                <CheckBox Content="口パク連動" IsChecked="{Binding SelectedLayer.IsLipSyncEnabled}" Foreground="#EEEEEE" Margin="0,2,0,4"/>
+                                <TextBlock Text="口パク差分名 (開,半開,閉)" Foreground="#AAAAAA" FontSize="11" Margin="0,2,0,2"/>
+                                <TextBox Text="{Binding SelectedLayer.LipSyncSlotNames, UpdateSourceTrigger=PropertyChanged}" Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="3"/>
+
+                                <TextBlock Text="口パク縦伸縮 (0~1)" Foreground="#AAAAAA" FontSize="11" Margin="0,4,0,2"/>
+                                <TextBox Text="{Binding SelectedLayer.LipSyncScaleInfluence, UpdateSourceTrigger=PropertyChanged}" Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="3"/>
+
+                                <CheckBox Content="目パチ連動" IsChecked="{Binding SelectedLayer.IsBlinkEnabled}" Foreground="#EEEEEE" Margin="0,6,0,4"/>
+                                <TextBlock Text="目パチ差分名 (開,半開,閉)" Foreground="#AAAAAA" FontSize="11" Margin="0,2,0,2"/>
+                                <TextBox Text="{Binding SelectedLayer.BlinkSlotNames, UpdateSourceTrigger=PropertyChanged}" Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="3"/>
+
+                                <Separator Margin="0,8" Background="#3F3F46"/>
+
+                                <!-- IK・物理設定 -->
+                                <TextBlock Text="🦴 IK・物理演算" FontWeight="Bold" Foreground="#CCCCCC" Margin="0,2,0,4"/>
+                                <CheckBox Content="IKを使用 (手足の先端)" IsChecked="{Binding SelectedLayer.IsIkEnabled}" Foreground="#EEEEEE" Margin="0,2,0,4"/>
+                                <CheckBox Content="揺れものにする (物理演算)" IsChecked="{Binding SelectedLayer.IsPhysicsEnabled}" Foreground="#EEEEEE" Margin="0,2,0,4"/>
                             </StackPanel>
                         </GroupBox>
 
                         <!-- 操作ガイド -->
-                        <TextBlock Text="💡 パーツ結合の手順" FontWeight="Bold" Foreground="#CCCCCC" Margin="0,4,0,4"/>
-                        <TextBlock Text="1. [📁 画像追加] で体・腕などのパーツ画像を読み込みます&#x0a;2. [🖐 移動・選択] でパーツをドラッグしてキャラクターの形に並べます&#x0a;3. [📍 ピン追加] で各パーツの関節位置をクリックしてピンを打ちます&#x0a;4. [🦴 ボーン接続] でピン間をドラッグして骨組みを結合します&#x0a;5. [✔ 適用して閉じる] を押してYMM4に反映します"
-                                   Foreground="#888888" TextWrapping="Wrap" LineHeight="18" FontSize="11"/>
+                        <TextBlock Text="💡 画像と画像のボーン結合方法" FontWeight="Bold" Foreground="#CCCCCC" Margin="0,4,0,4"/>
+                        <TextBlock Text="【方法1 (サイドバー)】&#x0a;パーツを選び、[結合する親パーツ] から親（体など）を選ぶだけで一瞬で骨が繋がります！&#x0a;&#x0a;【方法2 (キャンバス)】&#x0a;[📍 関節ピン配置] で親パーツの関節 → 子パーツの関節 をクリックしていくだけで骨組みが完成します。"
+                                   Foreground="#888888" TextWrapping="Wrap" LineHeight="17" FontSize="11"/>
                     </StackPanel>
                 </ScrollViewer>
             </Border>
@@ -304,8 +260,8 @@
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="パペット ボーン エディタ - パーツ画像を配置し、ピンを打って直感的にボーン接続" FontSize="11" Foreground="#FFFFFF"/>
-                <TextBlock Grid.Column="1" Text="{Binding Zoom, StringFormat='倍率: {0:P0}'}" FontSize="11" Foreground="#FFFFFF"/>
+                <TextBlock Grid.Column="0" Text="✨ 画像そのものがボーンとして直感的に結合されます" Foreground="#FFFFFF" FontSize="11"/>
+                <TextBlock Grid.Column="1" Text="{Binding ImageLayers.Count, StringFormat='パーツ総数: {0}'}" Foreground="#FFFFFF" FontSize="11"/>
             </Grid>
         </Border>
     </Grid>

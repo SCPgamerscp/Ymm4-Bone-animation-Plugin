@@ -16,54 +16,78 @@ namespace Ymm4BoneAnimationPlugin.Views
         [Description("移動・選択")]
         SelectMove,
 
-        [Description("ピン・ボーン作成")]
+        [Description("関節ピン配置")]
         AddPinAndBone,
     }
 
     /// <summary>
-    /// パペットエディタ上のピン（関節）。
+    /// 画像パーツ＝ボーン（骨）。
+    /// 各画像パーツが独立したボーンであり、親子関係（骨組み）を結ぶことができる。
     /// </summary>
-    public class PuppetPinViewModel : Bindable
+    public class PuppetImageLayerViewModel : Bindable
     {
         public string Id { get; init; } = Guid.NewGuid().ToString("N");
+        public string FilePath { get; init; }
+        public string FileName => Path.GetFileName(FilePath);
+        public string PartName => Path.GetFileNameWithoutExtension(FilePath);
 
-        public string Name { get => name; set { if (Set(ref name, value)) OnPropertyChanged(nameof(DisplayName)); } }
-        string name = "ピン";
+        public BitmapSource? Thumbnail { get => thumbnail; private set => Set(ref thumbnail, value); }
+        BitmapSource? thumbnail;
 
-        public double X { get => x; set => Set(ref x, value); }
-        double x;
+        public double Width { get => width; set { if (Set(ref width, value)) UpdateJointPos(); } }
+        double width = 200;
 
-        public double Y { get => y; set => Set(ref y, value); }
-        double y;
+        public double Height { get => height; set { if (Set(ref height, value)) UpdateJointPos(); } }
+        double height = 200;
 
-        public string? ParentPinId { get => parentPinId; set => Set(ref parentPinId, value); }
-        string? parentPinId;
+        public double X { get => x; set { if (Set(ref x, value)) UpdateJointPos(); } }
+        double x = 0;
 
-        public string? ImagePath
-        {
-            get => imagePath;
-            set
-            {
-                if (Set(ref imagePath, value))
-                {
-                    OnPropertyChanged(nameof(ImageFileName));
-                    OnPropertyChanged(nameof(DisplayName));
-                }
-            }
-        }
-        string? imagePath;
-
-        public string ImageFileName => !string.IsNullOrEmpty(ImagePath) ? Path.GetFileName(ImagePath) : "（未割り当て）";
-        public string DisplayName => !string.IsNullOrEmpty(ImagePath) ? $"{Name} [{Path.GetFileNameWithoutExtension(ImagePath)}]" : Name;
-
-        public double AnchorX { get => anchorX; set => Set(ref anchorX, value); }
-        double anchorX = 0.5;
-
-        public double AnchorY { get => anchorY; set => Set(ref anchorY, value); }
-        double anchorY = 0.5;
+        public double Y { get => y; set { if (Set(ref y, value)) UpdateJointPos(); } }
+        double y = 0;
 
         public int ZOrder { get => zOrder; set => Set(ref zOrder, value); }
         int zOrder;
+
+        // --- 親パーツ（ボーン結合先） ---
+        public string? ParentId { get => parentId; set { if (Set(ref parentId, value)) OnPropertyChanged(nameof(HasParent)); } }
+        string? parentId;
+
+        public bool HasParent => !string.IsNullOrEmpty(ParentId);
+
+        public string ParentName { get => parentName; set => Set(ref parentName, value); }
+        string parentName = "（なし：ルート）";
+
+        // --- 回転の中心関節（アンカーポイント 0~1） ---
+        public double AnchorX { get => anchorX; set { if (Set(ref anchorX, value)) UpdateJointPos(); } }
+        double anchorX = 0.5;
+
+        public double AnchorY { get => anchorY; set { if (Set(ref anchorY, value)) UpdateJointPos(); } }
+        double anchorY = 0.5;
+
+        // --- キャンバス上の関節座標（ピン位置） ---
+        public double JointX { get => jointX; private set => Set(ref jointX, value); }
+        double jointX;
+
+        public double JointY { get => jointY; private set => Set(ref jointY, value); }
+        double jointY;
+
+        void UpdateJointPos()
+        {
+            JointX = Math.Round(X + (AnchorX - 0.5) * Width, 1);
+            JointY = Math.Round(Y + (AnchorY - 0.5) * Height, 1);
+        }
+
+        public void SetJointPos(double canvasX, double canvasY)
+        {
+            if (Width > 0 && Height > 0)
+            {
+                var left = X - Width / 2.0;
+                var top = Y - Height / 2.0;
+                AnchorX = Math.Clamp(Math.Round((canvasX - left) / Width, 3), 0.0, 1.0);
+                AnchorY = Math.Clamp(Math.Round((canvasY - top) / Height, 3), 0.0, 1.0);
+            }
+        }
 
         // --- 口パク・目パチ設定 ---
         public bool IsLipSyncEnabled { get => isLipSyncEnabled; set => Set(ref isLipSyncEnabled, value); }
@@ -96,87 +120,12 @@ namespace Ymm4BoneAnimationPlugin.Views
 
         /// <summary>元のBoneItem（既存ボーンのプロパティを保持するため）</summary>
         public BoneItem? OriginalBone { get; set; }
-    }
-
-    /// <summary>
-    /// パペットエディタ上のボーン接続線（親ピン→子ピン）。
-    /// </summary>
-    public class PuppetBoneViewModel : Bindable
-    {
-        public PuppetPinViewModel ParentPin { get; }
-        public PuppetPinViewModel ChildPin { get; }
-
-        public double X1 => ParentPin.X;
-        public double Y1 => ParentPin.Y;
-        public double X2 => ChildPin.X;
-        public double Y2 => ChildPin.Y;
-
-        public PuppetBoneViewModel(PuppetPinViewModel parent, PuppetPinViewModel child)
-        {
-            ParentPin = parent;
-            ChildPin = child;
-            parent.PropertyChanged += (s, e) =>
-            {
-                if (e.PropertyName is nameof(PuppetPinViewModel.X) or nameof(PuppetPinViewModel.Y))
-                {
-                    OnPropertyChanged(nameof(X1));
-                    OnPropertyChanged(nameof(Y1));
-                }
-            };
-            child.PropertyChanged += (s, e) =>
-            {
-                if (e.PropertyName is nameof(PuppetPinViewModel.X) or nameof(PuppetPinViewModel.Y))
-                {
-                    OnPropertyChanged(nameof(X2));
-                    OnPropertyChanged(nameof(Y2));
-                }
-            };
-        }
-    }
-
-    /// <summary>
-    /// キャンバス上に配置された画像パーツ（レイヤー）。
-    /// サムネイルプレビューと割り当てボーン情報を保持。
-    /// </summary>
-    public class PuppetImageLayerViewModel : Bindable
-    {
-        public string Id { get; init; } = Guid.NewGuid().ToString("N");
-        public string FilePath { get; init; }
-        public string FileName => Path.GetFileName(FilePath);
-
-        public BitmapSource? Thumbnail { get => thumbnail; private set => Set(ref thumbnail, value); }
-        BitmapSource? thumbnail;
-
-        public double Width { get => width; set => Set(ref width, value); }
-        double width = 200;
-
-        public double Height { get => height; set => Set(ref height, value); }
-        double height = 200;
-
-        public double X { get => x; set => Set(ref x, value); }
-        double x = 0;
-
-        public double Y { get => y; set => Set(ref y, value); }
-        double y = 0;
-
-        public int ZOrder { get => zOrder; set => Set(ref zOrder, value); }
-        int zOrder;
-
-        public string AssignedPinName { get => assignedPinName; set { if (Set(ref assignedPinName, value)) OnPropertyChanged(nameof(HasAssignedPin)); } }
-        string assignedPinName = "⚪ 未割り当て";
-
-        public bool HasAssignedPin => AssignedPinName != "⚪ 未割り当て" && !string.IsNullOrEmpty(AssignedPinName);
-
-        public bool IsSelected { get => isSelected; set { if (Set(ref isSelected, value)) OnPropertyChanged(nameof(IsHighlighted)); } }
-        bool isSelected;
-
-        public bool IsHighlighted { get => isHighlighted || isSelected; set => Set(ref isHighlighted, value); }
-        bool isHighlighted;
 
         public PuppetImageLayerViewModel(string filePath)
         {
             FilePath = filePath;
             LoadImage();
+            UpdateJointPos();
         }
 
         void LoadImage()
@@ -207,18 +156,60 @@ namespace Ymm4BoneAnimationPlugin.Views
     }
 
     /// <summary>
+    /// 親画像パーツ→子画像パーツを結ぶボーン接続線。
+    /// </summary>
+    public class PuppetBoneViewModel : Bindable
+    {
+        public PuppetImageLayerViewModel ParentLayer { get; }
+        public PuppetImageLayerViewModel ChildLayer { get; }
+
+        public double X1 => ParentLayer.JointX;
+        public double Y1 => ParentLayer.JointY;
+        public double X2 => ChildLayer.JointX;
+        public double Y2 => ChildLayer.JointY;
+
+        public PuppetBoneViewModel(PuppetImageLayerViewModel parent, PuppetImageLayerViewModel child)
+        {
+            ParentLayer = parent;
+            ChildLayer = child;
+            parent.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName is nameof(PuppetImageLayerViewModel.JointX) or nameof(PuppetImageLayerViewModel.JointY))
+                {
+                    OnPropertyChanged(nameof(X1));
+                    OnPropertyChanged(nameof(Y1));
+                }
+            };
+            child.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName is nameof(PuppetImageLayerViewModel.JointX) or nameof(PuppetImageLayerViewModel.JointY))
+                {
+                    OnPropertyChanged(nameof(X2));
+                    OnPropertyChanged(nameof(Y2));
+                }
+            };
+        }
+    }
+
+    /// <summary>
+    /// 親パーツ選択ドロップダウン用アイテム
+    /// </summary>
+    public record ParentOption(string? Id, string Name);
+
+    /// <summary>
     /// Undo / Redo 用のスナップショットデータ
     /// </summary>
-    internal record struct PinSnapshot(
+    internal record struct LayerSnapshot(
         string Id,
-        string Name,
+        string FilePath,
         double X,
         double Y,
-        string? ParentPinId,
-        string? ImagePath,
+        double Width,
+        double Height,
+        int ZOrder,
+        string? ParentId,
         double AnchorX,
         double AnchorY,
-        int ZOrder,
         bool IsLipSyncEnabled,
         string LipSyncSlotNames,
         double LipSyncScaleInfluence,
@@ -228,17 +219,15 @@ namespace Ymm4BoneAnimationPlugin.Views
         bool IsPhysicsEnabled,
         BoneItem? OriginalBone);
 
-    internal record struct LayerSnapshot(string Id, string FilePath, double X, double Y, double Width, double Height, int ZOrder);
-    internal record struct EditorSnapshot(ImmutableList<PinSnapshot> Pins, ImmutableList<LayerSnapshot> Layers, string? SelectedPinId, string? SelectedLayerId);
+    internal record struct EditorSnapshot(ImmutableList<LayerSnapshot> Layers, string? SelectedLayerId);
 
     /// <summary>
-    /// パペット変形方式のボーンエディタViewModel。
+    /// 「画像そのものをボーンにする」直感的なパペットボーンエディタViewModel。
     /// </summary>
     public class PuppetEditorViewModel : Bindable
     {
-        public ObservableCollection<PuppetPinViewModel> Pins { get; } = new();
-        public ObservableCollection<PuppetBoneViewModel> Bones { get; } = new();
         public ObservableCollection<PuppetImageLayerViewModel> ImageLayers { get; } = new();
+        public ObservableCollection<PuppetBoneViewModel> Bones { get; } = new();
 
         readonly Stack<EditorSnapshot> undoStack = new();
         readonly Stack<EditorSnapshot> redoStack = new();
@@ -260,28 +249,6 @@ namespace Ymm4BoneAnimationPlugin.Views
         public bool IsSelectMoveMode { get => CurrentTool == PuppetToolMode.SelectMove; set { if (value) CurrentTool = PuppetToolMode.SelectMove; } }
         public bool IsAddPinAndBoneMode { get => CurrentTool == PuppetToolMode.AddPinAndBone; set { if (value) CurrentTool = PuppetToolMode.AddPinAndBone; } }
 
-        public PuppetPinViewModel? SelectedPin
-        {
-            get => selectedPin;
-            set
-            {
-                if (selectedPin != null)
-                    selectedPin.IsSelected = false;
-                if (Set(ref selectedPin, value) && selectedPin != null)
-                {
-                    selectedPin.IsSelected = true;
-                    // ピンに紐付く画像パーツをハイライト
-                    UpdateHighlights();
-                }
-                else
-                {
-                    UpdateHighlights();
-                }
-                RaiseCommandStates();
-            }
-        }
-        PuppetPinViewModel? selectedPin;
-
         public PuppetImageLayerViewModel? SelectedLayer
         {
             get => selectedLayer;
@@ -292,56 +259,15 @@ namespace Ymm4BoneAnimationPlugin.Views
                 if (Set(ref selectedLayer, value) && selectedLayer != null)
                 {
                     selectedLayer.IsSelected = true;
-                    // 画像パーツに紐付くピンをハイライト
-                    UpdateHighlights();
                 }
-                else
-                {
-                    UpdateHighlights();
-                }
+                UpdateAvailableParents();
                 RaiseCommandStates();
             }
         }
         PuppetImageLayerViewModel? selectedLayer;
 
-        public void UpdateHighlights()
-        {
-            // 画像側のハイライト更新
-            foreach (var layer in ImageLayers)
-            {
-                layer.IsHighlighted = (SelectedPin != null && !string.IsNullOrEmpty(SelectedPin.ImagePath) &&
-                                       SelectedPin.ImagePath.Equals(layer.FilePath, StringComparison.OrdinalIgnoreCase))
-                                      || layer.IsSelected;
-            }
-
-            // ピン側のハイライト更新
-            foreach (var pin in Pins)
-            {
-                pin.IsHighlighted = (SelectedLayer != null && !string.IsNullOrEmpty(pin.ImagePath) &&
-                                     pin.ImagePath.Equals(SelectedLayer.FilePath, StringComparison.OrdinalIgnoreCase))
-                                    || pin.IsSelected;
-            }
-        }
-
-        public void UpdatePinAssignments()
-        {
-            foreach (var layer in ImageLayers)
-            {
-                var assignedPins = Pins
-                    .Where(p => !string.IsNullOrEmpty(p.ImagePath) && p.ImagePath.Equals(layer.FilePath, StringComparison.OrdinalIgnoreCase))
-                    .Select(p => p.Name)
-                    .ToList();
-
-                if (assignedPins.Count > 0)
-                {
-                    layer.AssignedPinName = $"🦴 {string.Join(", ", assignedPins)}";
-                }
-                else
-                {
-                    layer.AssignedPinName = "⚪ 未割り当て";
-                }
-            }
-        }
+        /// <summary>現在選択中のパーツが親として選択可能なパーツ一覧（自身や循環参照を除く）</summary>
+        public ObservableCollection<ParentOption> AvailableParents { get; } = new();
 
         public double Zoom { get => zoom; set => Set(ref zoom, Math.Clamp(value, 0.1, 10.0)); }
         double zoom = 1.0;
@@ -354,7 +280,6 @@ namespace Ymm4BoneAnimationPlugin.Views
 
         public ActionCommand AddPinAndBoneCommand { get; }
         public ActionCommand SelectMoveCommand { get; }
-        public ActionCommand DeleteSelectedCommand { get; }
         public ActionCommand ClearAllCommand { get; }
         public ActionCommand ResetViewCommand { get; }
         public ActionCommand AddImagesCommand { get; }
@@ -365,13 +290,13 @@ namespace Ymm4BoneAnimationPlugin.Views
         public ActionCommand SendLayerBackwardCommand { get; }
         public ActionCommand SendLayerToBackCommand { get; }
         public ActionCommand DeleteLayerCommand { get; }
+        public ActionCommand UnlinkParentCommand { get; }
 
         public PuppetEditorViewModel(ImmutableList<BoneItem> existingBones)
         {
             AddPinAndBoneCommand = new ActionCommand(_ => true, _ => CurrentTool = PuppetToolMode.AddPinAndBone);
             SelectMoveCommand = new ActionCommand(_ => true, _ => CurrentTool = PuppetToolMode.SelectMove);
-            DeleteSelectedCommand = new ActionCommand(_ => SelectedPin != null, _ => DeleteSelectedPin());
-            ClearAllCommand = new ActionCommand(_ => Pins.Count > 0 || ImageLayers.Count > 0, _ => ClearAll());
+            ClearAllCommand = new ActionCommand(_ => ImageLayers.Count > 0, _ => ClearAll());
             ResetViewCommand = new ActionCommand(_ => true, _ => ResetView());
             AddImagesCommand = new ActionCommand(_ => true, _ => SelectImages());
             UndoCommand = new ActionCommand(_ => undoStack.Count > 0, _ => Undo());
@@ -381,16 +306,19 @@ namespace Ymm4BoneAnimationPlugin.Views
             SendLayerBackwardCommand = new ActionCommand(_ => SelectedLayer != null, _ => ChangeSelectedLayerZOrder(-1));
             SendLayerToBackCommand = new ActionCommand(_ => SelectedLayer != null, _ => SendSelectedLayerToBack());
             DeleteLayerCommand = new ActionCommand(_ => SelectedLayer != null, _ => DeleteSelectedLayer());
+            UnlinkParentCommand = new ActionCommand(_ => SelectedLayer?.HasParent == true, _ => SetLayerParent(SelectedLayer, null));
 
-            Pins.CollectionChanged += (s, e) => UpdatePinAssignments();
-            ImageLayers.CollectionChanged += (s, e) => UpdatePinAssignments();
+            ImageLayers.CollectionChanged += (s, e) =>
+            {
+                RebuildBoneConnections();
+                UpdateAvailableParents();
+            };
 
             ImportExistingBones(existingBones);
         }
 
         void RaiseCommandStates()
         {
-            DeleteSelectedCommand.RaiseCanExecuteChanged();
             ClearAllCommand.RaiseCanExecuteChanged();
             UndoCommand.RaiseCanExecuteChanged();
             RedoCommand.RaiseCanExecuteChanged();
@@ -399,33 +327,34 @@ namespace Ymm4BoneAnimationPlugin.Views
             SendLayerBackwardCommand.RaiseCanExecuteChanged();
             SendLayerToBackCommand.RaiseCanExecuteChanged();
             DeleteLayerCommand.RaiseCanExecuteChanged();
+            UnlinkParentCommand.RaiseCanExecuteChanged();
         }
 
         #region Undo / Redo
 
         public void PushSnapshot()
         {
-            var pinList = Pins.Select(p => new PinSnapshot(
-                p.Id,
-                p.Name,
-                p.X,
-                p.Y,
-                p.ParentPinId,
-                p.ImagePath,
-                p.AnchorX,
-                p.AnchorY,
-                p.ZOrder,
-                p.IsLipSyncEnabled,
-                p.LipSyncSlotNames,
-                p.LipSyncScaleInfluence,
-                p.IsBlinkEnabled,
-                p.BlinkSlotNames,
-                p.IsIkEnabled,
-                p.IsPhysicsEnabled,
-                p.OriginalBone)).ToImmutableList();
+            var layerList = ImageLayers.Select(l => new LayerSnapshot(
+                l.Id,
+                l.FilePath,
+                l.X,
+                l.Y,
+                l.Width,
+                l.Height,
+                l.ZOrder,
+                l.ParentId,
+                l.AnchorX,
+                l.AnchorY,
+                l.IsLipSyncEnabled,
+                l.LipSyncSlotNames,
+                l.LipSyncScaleInfluence,
+                l.IsBlinkEnabled,
+                l.BlinkSlotNames,
+                l.IsIkEnabled,
+                l.IsPhysicsEnabled,
+                l.OriginalBone)).ToImmutableList();
 
-            var layerList = ImageLayers.Select(l => new LayerSnapshot(l.Id, l.FilePath, l.X, l.Y, l.Width, l.Height, l.ZOrder)).ToImmutableList();
-            undoStack.Push(new EditorSnapshot(pinList, layerList, SelectedPin?.Id, SelectedLayer?.Id));
+            undoStack.Push(new EditorSnapshot(layerList, SelectedLayer?.Id));
             redoStack.Clear();
             RaiseCommandStates();
         }
@@ -435,27 +364,27 @@ namespace Ymm4BoneAnimationPlugin.Views
             if (undoStack.Count == 0)
                 return;
 
-            var pinList = Pins.Select(p => new PinSnapshot(
-                p.Id,
-                p.Name,
-                p.X,
-                p.Y,
-                p.ParentPinId,
-                p.ImagePath,
-                p.AnchorX,
-                p.AnchorY,
-                p.ZOrder,
-                p.IsLipSyncEnabled,
-                p.LipSyncSlotNames,
-                p.LipSyncScaleInfluence,
-                p.IsBlinkEnabled,
-                p.BlinkSlotNames,
-                p.IsIkEnabled,
-                p.IsPhysicsEnabled,
-                p.OriginalBone)).ToImmutableList();
+            var layerList = ImageLayers.Select(l => new LayerSnapshot(
+                l.Id,
+                l.FilePath,
+                l.X,
+                l.Y,
+                l.Width,
+                l.Height,
+                l.ZOrder,
+                l.ParentId,
+                l.AnchorX,
+                l.AnchorY,
+                l.IsLipSyncEnabled,
+                l.LipSyncSlotNames,
+                l.LipSyncScaleInfluence,
+                l.IsBlinkEnabled,
+                l.BlinkSlotNames,
+                l.IsIkEnabled,
+                l.IsPhysicsEnabled,
+                l.OriginalBone)).ToImmutableList();
 
-            var layerList = ImageLayers.Select(l => new LayerSnapshot(l.Id, l.FilePath, l.X, l.Y, l.Width, l.Height, l.ZOrder)).ToImmutableList();
-            redoStack.Push(new EditorSnapshot(pinList, layerList, SelectedPin?.Id, SelectedLayer?.Id));
+            redoStack.Push(new EditorSnapshot(layerList, SelectedLayer?.Id));
 
             var snapshot = undoStack.Pop();
             RestoreSnapshot(snapshot);
@@ -467,27 +396,27 @@ namespace Ymm4BoneAnimationPlugin.Views
             if (redoStack.Count == 0)
                 return;
 
-            var pinList = Pins.Select(p => new PinSnapshot(
-                p.Id,
-                p.Name,
-                p.X,
-                p.Y,
-                p.ParentPinId,
-                p.ImagePath,
-                p.AnchorX,
-                p.AnchorY,
-                p.ZOrder,
-                p.IsLipSyncEnabled,
-                p.LipSyncSlotNames,
-                p.LipSyncScaleInfluence,
-                p.IsBlinkEnabled,
-                p.BlinkSlotNames,
-                p.IsIkEnabled,
-                p.IsPhysicsEnabled,
-                p.OriginalBone)).ToImmutableList();
+            var layerList = ImageLayers.Select(l => new LayerSnapshot(
+                l.Id,
+                l.FilePath,
+                l.X,
+                l.Y,
+                l.Width,
+                l.Height,
+                l.ZOrder,
+                l.ParentId,
+                l.AnchorX,
+                l.AnchorY,
+                l.IsLipSyncEnabled,
+                l.LipSyncSlotNames,
+                l.LipSyncScaleInfluence,
+                l.IsBlinkEnabled,
+                l.BlinkSlotNames,
+                l.IsIkEnabled,
+                l.IsPhysicsEnabled,
+                l.OriginalBone)).ToImmutableList();
 
-            var layerList = ImageLayers.Select(l => new LayerSnapshot(l.Id, l.FilePath, l.X, l.Y, l.Width, l.Height, l.ZOrder)).ToImmutableList();
-            undoStack.Push(new EditorSnapshot(pinList, layerList, SelectedPin?.Id, SelectedLayer?.Id));
+            undoStack.Push(new EditorSnapshot(layerList, SelectedLayer?.Id));
 
             var snapshot = redoStack.Pop();
             RestoreSnapshot(snapshot);
@@ -496,37 +425,10 @@ namespace Ymm4BoneAnimationPlugin.Views
 
         void RestoreSnapshot(EditorSnapshot snapshot)
         {
-            Pins.Clear();
-            foreach (var p in snapshot.Pins)
-            {
-                var pin = new PuppetPinViewModel
-                {
-                    Id = p.Id,
-                    Name = p.Name,
-                    X = p.X,
-                    Y = p.Y,
-                    ParentPinId = p.ParentPinId,
-                    ImagePath = p.ImagePath,
-                    AnchorX = p.AnchorX,
-                    AnchorY = p.AnchorY,
-                    ZOrder = p.ZOrder,
-                    IsLipSyncEnabled = p.IsLipSyncEnabled,
-                    LipSyncSlotNames = p.LipSyncSlotNames,
-                    LipSyncScaleInfluence = p.LipSyncScaleInfluence,
-                    IsBlinkEnabled = p.IsBlinkEnabled,
-                    BlinkSlotNames = p.BlinkSlotNames,
-                    IsIkEnabled = p.IsIkEnabled,
-                    IsPhysicsEnabled = p.IsPhysicsEnabled,
-                    OriginalBone = p.OriginalBone,
-                };
-                pin.PropertyChanged += (s, e) => { if (e.PropertyName == nameof(PuppetPinViewModel.ImagePath)) UpdatePinAssignments(); };
-                Pins.Add(pin);
-            }
-
             ImageLayers.Clear();
             foreach (var l in snapshot.Layers)
             {
-                ImageLayers.Add(new PuppetImageLayerViewModel(l.FilePath)
+                var layer = new PuppetImageLayerViewModel(l.FilePath)
                 {
                     Id = l.Id,
                     X = l.X,
@@ -534,12 +436,22 @@ namespace Ymm4BoneAnimationPlugin.Views
                     Width = l.Width,
                     Height = l.Height,
                     ZOrder = l.ZOrder,
-                });
+                    ParentId = l.ParentId,
+                    AnchorX = l.AnchorX,
+                    AnchorY = l.AnchorY,
+                    IsLipSyncEnabled = l.IsLipSyncEnabled,
+                    LipSyncSlotNames = l.LipSyncSlotNames,
+                    LipSyncScaleInfluence = l.LipSyncScaleInfluence,
+                    IsBlinkEnabled = l.IsBlinkEnabled,
+                    BlinkSlotNames = l.BlinkSlotNames,
+                    IsIkEnabled = l.IsIkEnabled,
+                    IsPhysicsEnabled = l.IsPhysicsEnabled,
+                    OriginalBone = l.OriginalBone,
+                };
+                ImageLayers.Add(layer);
             }
 
             RebuildBoneConnections();
-            UpdatePinAssignments();
-            SelectedPin = Pins.FirstOrDefault(p => p.Id == snapshot.SelectedPinId);
             SelectedLayer = ImageLayers.FirstOrDefault(l => l.Id == snapshot.SelectedLayerId);
         }
 
@@ -550,24 +462,26 @@ namespace Ymm4BoneAnimationPlugin.Views
             if (existingBones == null || existingBones.Count == 0)
                 return;
 
-            var pinMap = new Dictionary<string, PuppetPinViewModel>();
-            double curX = 0;
-            double curY = 0;
+            var layerMap = new Dictionary<string, PuppetImageLayerViewModel>();
 
             foreach (var bone in existingBones)
             {
-                var pinX = bone.X.Values.Count > 0 ? bone.X.Values[0].Value : curX;
-                var pinY = bone.Y.Values.Count > 0 ? bone.Y.Values[0].Value : curY;
+                var imagePath = bone.ImageSlots.FirstOrDefault(s => !string.IsNullOrEmpty(s.FilePath))?.FilePath;
+                if (string.IsNullOrEmpty(imagePath) || !File.Exists(imagePath))
+                    continue;
 
-                var pin = new PuppetPinViewModel
+                var pinX = bone.X.Values.Count > 0 ? bone.X.Values[0].Value : 0;
+                var pinY = bone.Y.Values.Count > 0 ? bone.Y.Values[0].Value : 0;
+
+                var layer = new PuppetImageLayerViewModel(imagePath)
                 {
                     Id = bone.Id,
-                    Name = bone.Name,
-                    ParentPinId = bone.ParentId,
-                    ImagePath = bone.ImageSlots.FirstOrDefault(s => !string.IsNullOrEmpty(s.FilePath))?.FilePath,
+                    X = pinX,
+                    Y = pinY,
+                    ZOrder = bone.BaseZOrder,
+                    ParentId = bone.ParentId,
                     AnchorX = bone.AnchorX,
                     AnchorY = bone.AnchorY,
-                    ZOrder = bone.BaseZOrder,
                     IsLipSyncEnabled = bone.IsLipSyncEnabled,
                     LipSyncSlotNames = bone.LipSyncSlotNames,
                     LipSyncScaleInfluence = bone.LipSyncScaleInfluence,
@@ -575,79 +489,146 @@ namespace Ymm4BoneAnimationPlugin.Views
                     BlinkSlotNames = bone.BlinkSlotNames,
                     IsIkEnabled = bone.IsIkEnabled,
                     IsPhysicsEnabled = bone.IsPhysicsEnabled,
-                    X = pinX,
-                    Y = pinY,
                     OriginalBone = bone,
                 };
-                pin.PropertyChanged += (s, e) => { if (e.PropertyName == nameof(PuppetPinViewModel.ImagePath)) UpdatePinAssignments(); };
-                pinMap[bone.Id] = pin;
-                Pins.Add(pin);
-
-                if (!string.IsNullOrEmpty(pin.ImagePath) && File.Exists(pin.ImagePath))
-                {
-                    if (!ImageLayers.Any(l => l.FilePath.Equals(pin.ImagePath, StringComparison.OrdinalIgnoreCase)))
-                    {
-                        var layer = new PuppetImageLayerViewModel(pin.ImagePath)
-                        {
-                            X = pinX,
-                            Y = pinY,
-                            ZOrder = bone.BaseZOrder,
-                        };
-                        ImageLayers.Add(layer);
-                    }
-                }
+                layerMap[bone.Id] = layer;
+                ImageLayers.Add(layer);
             }
 
             RebuildBoneConnections();
-            UpdatePinAssignments();
-            if (Pins.Count > 0)
-                SelectedPin = Pins[0];
+            if (ImageLayers.Count > 0)
+                SelectedLayer = ImageLayers[0];
         }
 
         /// <summary>
-        /// クリックした位置にピンを打ち、直前の選択ピンと自動でボーン（親子関係）を結線する。
+        /// 画像パーツAと画像パーツBをボーン（親子関係）で結ぶ
         /// </summary>
-        public void AddPinAt(double x, double y)
+        public void ConnectLayers(PuppetImageLayerViewModel parentLayer, PuppetImageLayerViewModel childLayer)
         {
+            if (parentLayer == null || childLayer == null || ReferenceEquals(parentLayer, childLayer))
+                return;
+
+            // 循環参照チェック
+            var current = parentLayer;
+            while (current != null)
+            {
+                if (current.Id == childLayer.Id)
+                    return;
+                current = ImageLayers.FirstOrDefault(l => l.Id == current.ParentId);
+            }
+
             PushSnapshot();
+            childLayer.ParentId = parentLayer.Id;
+            RebuildBoneConnections();
+            SelectedLayer = childLayer;
+        }
 
-            var parentPin = SelectedPin;
-            var name = $"ピン{Pins.Count + 1}";
-            var newPin = new PuppetPinViewModel
+        public void SetLayerParent(PuppetImageLayerViewModel? layer, string? newParentId)
+        {
+            if (layer == null || layer.ParentId == newParentId)
+                return;
+
+            if (!string.IsNullOrEmpty(newParentId))
             {
-                Name = name,
-                X = Math.Round(x, 1),
-                Y = Math.Round(y, 1),
-                ZOrder = Pins.Count,
-            };
-            newPin.PropertyChanged += (s, e) => { if (e.PropertyName == nameof(PuppetPinViewModel.ImagePath)) UpdatePinAssignments(); };
-
-            // クリック位置にある画像パーツを探して割り当て＆アンカー自動計算
-            var hitLayer = FindLayerAt(x, y) ?? ImageLayers.LastOrDefault();
-            if (hitLayer != null)
-            {
-                newPin.ImagePath = hitLayer.FilePath;
-                newPin.ZOrder = hitLayer.ZOrder;
-
-                var layerLeft = hitLayer.X - hitLayer.Width / 2.0;
-                var layerTop = hitLayer.Y - hitLayer.Height / 2.0;
-                if (hitLayer.Width > 0 && hitLayer.Height > 0)
+                var parent = ImageLayers.FirstOrDefault(l => l.Id == newParentId);
+                if (parent != null)
                 {
-                    newPin.AnchorX = Math.Clamp(Math.Round((x - layerLeft) / hitLayer.Width, 3), 0.0, 1.0);
-                    newPin.AnchorY = Math.Clamp(Math.Round((y - layerTop) / hitLayer.Height, 3), 0.0, 1.0);
+                    ConnectLayers(parent, layer);
+                    return;
                 }
             }
 
-            // 直前のピンがあれば自動的にボーン連結
-            if (parentPin != null)
-            {
-                newPin.ParentPinId = parentPin.Id;
-            }
-
-            Pins.Add(newPin);
+            PushSnapshot();
+            layer.ParentId = null;
             RebuildBoneConnections();
-            UpdatePinAssignments();
-            SelectedPin = newPin;
+            RaiseCommandStates();
+        }
+
+        public void RebuildBoneConnections()
+        {
+            Bones.Clear();
+            foreach (var layer in ImageLayers)
+            {
+                if (!string.IsNullOrEmpty(layer.ParentId))
+                {
+                    var parent = ImageLayers.FirstOrDefault(l => l.Id == layer.ParentId);
+                    if (parent != null)
+                    {
+                        layer.ParentName = parent.PartName;
+                        Bones.Add(new PuppetBoneViewModel(parent, layer));
+                    }
+                    else
+                    {
+                        layer.ParentName = "（なし：ルート）";
+                    }
+                }
+                else
+                {
+                    layer.ParentName = "（なし：ルート）";
+                }
+            }
+            UpdateAvailableParents();
+        }
+
+        public void UpdateAvailableParents()
+        {
+            AvailableParents.Clear();
+            AvailableParents.Add(new ParentOption(null, "（なし：ルートパーツ）"));
+
+            if (SelectedLayer == null)
+                return;
+
+            // 自身の子孫を除いた選択可能な親パーツリスト
+            var descendants = GetDescendantIds(SelectedLayer.Id);
+
+            foreach (var layer in ImageLayers)
+            {
+                if (layer.Id != SelectedLayer.Id && !descendants.Contains(layer.Id))
+                {
+                    AvailableParents.Add(new ParentOption(layer.Id, $"🦴 {layer.PartName}"));
+                }
+            }
+        }
+
+        HashSet<string> GetDescendantIds(string rootId)
+        {
+            var result = new HashSet<string>();
+            var queue = new Queue<string>();
+            queue.Enqueue(rootId);
+
+            while (queue.Count > 0)
+            {
+                var current = queue.Dequeue();
+                foreach (var child in ImageLayers.Where(l => l.ParentId == current))
+                {
+                    if (result.Add(child.Id))
+                        queue.Enqueue(child.Id);
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// キャンバスクリック位置にあるパーツの関節ピン（アンカー）を配置し、直前のパーツと自動結合
+        /// </summary>
+        public void PlaceJointAt(double canvasX, double canvasY)
+        {
+            var targetLayer = SelectedLayer ?? FindLayerAt(canvasX, canvasY) ?? ImageLayers.LastOrDefault();
+            if (targetLayer == null)
+                return;
+
+            PushSnapshot();
+            targetLayer.SetJointPos(canvasX, canvasY);
+
+            // 直前に別のパーツが選択されていて、まだ親が設定されていなければ自動でボーン結線
+            if (SelectedLayer != null && SelectedLayer != targetLayer && string.IsNullOrEmpty(targetLayer.ParentId))
+            {
+                ConnectLayers(SelectedLayer, targetLayer);
+            }
+            else
+            {
+                SelectedLayer = targetLayer;
+            }
         }
 
         public PuppetImageLayerViewModel? FindLayerAt(double canvasX, double canvasY)
@@ -663,57 +644,6 @@ namespace Ymm4BoneAnimationPlugin.Views
                 });
         }
 
-        public void ConnectPins(PuppetPinViewModel parentPin, PuppetPinViewModel childPin)
-        {
-            if (parentPin == null || childPin == null || ReferenceEquals(parentPin, childPin))
-                return;
-
-            var current = parentPin;
-            while (current != null)
-            {
-                if (current.Id == childPin.Id)
-                    return;
-                current = Pins.FirstOrDefault(p => p.Id == current.ParentPinId);
-            }
-
-            PushSnapshot();
-            childPin.ParentPinId = parentPin.Id;
-            RebuildBoneConnections();
-            SelectedPin = childPin;
-        }
-
-        public void RebuildBoneConnections()
-        {
-            Bones.Clear();
-            foreach (var pin in Pins)
-            {
-                if (!string.IsNullOrEmpty(pin.ParentPinId))
-                {
-                    var parent = Pins.FirstOrDefault(p => p.Id == pin.ParentPinId);
-                    if (parent != null)
-                        Bones.Add(new PuppetBoneViewModel(parent, pin));
-                }
-            }
-        }
-
-        public void DeleteSelectedPin()
-        {
-            if (SelectedPin == null)
-                return;
-
-            PushSnapshot();
-            var removePin = SelectedPin;
-            var parentId = removePin.ParentPinId;
-
-            foreach (var child in Pins.Where(p => p.ParentPinId == removePin.Id))
-                child.ParentPinId = parentId;
-
-            Pins.Remove(removePin);
-            RebuildBoneConnections();
-            UpdatePinAssignments();
-            SelectedPin = Pins.LastOrDefault();
-        }
-
         public void DeleteSelectedLayer()
         {
             if (SelectedLayer == null)
@@ -721,9 +651,13 @@ namespace Ymm4BoneAnimationPlugin.Views
 
             PushSnapshot();
             var removeLayer = SelectedLayer;
+            var parentId = removeLayer.ParentId;
+
+            foreach (var child in ImageLayers.Where(l => l.ParentId == removeLayer.Id))
+                child.ParentId = parentId;
+
             ImageLayers.Remove(removeLayer);
-            UpdatePinAssignments();
-            SelectedLayer = null;
+            SelectedLayer = ImageLayers.LastOrDefault();
         }
 
         public void BringSelectedLayerToFront()
@@ -782,12 +716,9 @@ namespace Ymm4BoneAnimationPlugin.Views
         public void ClearAll()
         {
             PushSnapshot();
-            Pins.Clear();
-            Bones.Clear();
             ImageLayers.Clear();
-            SelectedPin = null;
+            Bones.Clear();
             SelectedLayer = null;
-            UpdatePinAssignments();
             RaiseCommandStates();
         }
 
@@ -826,7 +757,6 @@ namespace Ymm4BoneAnimationPlugin.Views
             {
                 if (!ImageLayers.Any(l => l.FilePath.Equals(file, StringComparison.OrdinalIgnoreCase)))
                 {
-                    // パーツ分け立ち絵が本来の位置で綺麗に重なるよう、オフセットなし (0, 0) で配置
                     var layer = new PuppetImageLayerViewModel(file)
                     {
                         X = 0,
@@ -837,64 +767,53 @@ namespace Ymm4BoneAnimationPlugin.Views
                     SelectedLayer = layer;
                 }
             }
-            UpdatePinAssignments();
         }
 
         /// <summary>
-        /// パペットエディタのピン・ボーン構成（およびピンのない固定パーツ画像）を
-        /// YMM4 の BoneItem リストへ変換して出力する。
+        /// 画像パーツ＝ボーンの階層構造を YMM4 の BoneItem リストへ変換して出力する。
         /// </summary>
         public ImmutableList<BoneItem> ExportToBoneItems()
         {
             var result = new List<BoneItem>();
-            var pinToBoneMap = new Dictionary<string, BoneItem>();
-            var usedImagePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var layerToBoneMap = new Dictionary<string, BoneItem>();
 
-            // 1. ピンが打たれたボーンを生成
-            foreach (var pin in Pins)
+            foreach (var layer in ImageLayers)
             {
-                var bone = pin.OriginalBone != null
-                    ? new BoneItem(pin.OriginalBone)
-                    : new BoneItem(pin.Name);
+                var bone = layer.OriginalBone != null
+                    ? new BoneItem(layer.OriginalBone)
+                    : new BoneItem(layer.PartName);
 
-                bone.Name = pin.Name;
-                bone.BaseZOrder = pin.ZOrder;
-                bone.AnchorX = (float)pin.AnchorX;
-                bone.AnchorY = (float)pin.AnchorY;
-                bone.IsLipSyncEnabled = pin.IsLipSyncEnabled;
-                bone.LipSyncSlotNames = pin.LipSyncSlotNames;
-                bone.LipSyncScaleInfluence = pin.LipSyncScaleInfluence;
-                bone.IsBlinkEnabled = pin.IsBlinkEnabled;
-                bone.BlinkSlotNames = pin.BlinkSlotNames;
-                bone.IsIkEnabled = pin.IsIkEnabled;
-                bone.IsPhysicsEnabled = pin.IsPhysicsEnabled;
+                bone.Name = layer.PartName;
+                bone.BaseZOrder = layer.ZOrder;
+                bone.AnchorX = (float)layer.AnchorX;
+                bone.AnchorY = (float)layer.AnchorY;
+                bone.IsLipSyncEnabled = layer.IsLipSyncEnabled;
+                bone.LipSyncSlotNames = layer.LipSyncSlotNames;
+                bone.LipSyncScaleInfluence = layer.LipSyncScaleInfluence;
+                bone.IsBlinkEnabled = layer.IsBlinkEnabled;
+                bone.BlinkSlotNames = layer.BlinkSlotNames;
+                bone.IsIkEnabled = layer.IsIkEnabled;
+                bone.IsPhysicsEnabled = layer.IsPhysicsEnabled;
+                bone.ImageSlots = [new BoneImageSlot(layer.PartName, layer.FilePath)];
 
-                // 画像が割り当てられている場合
-                if (!string.IsNullOrEmpty(pin.ImagePath))
-                {
-                    var fileName = Path.GetFileNameWithoutExtension(pin.ImagePath);
-                    bone.ImageSlots = [new BoneImageSlot(fileName, pin.ImagePath)];
-                    usedImagePaths.Add(pin.ImagePath);
-                }
-
-                pinToBoneMap[pin.Id] = bone;
+                layerToBoneMap[layer.Id] = bone;
                 result.Add(bone);
             }
 
-            // 親子関係および長さ・相対オフセットの計算
-            foreach (var pin in Pins)
+            // 親子関係と長さ・オフセットの計算
+            foreach (var layer in ImageLayers)
             {
-                var bone = pinToBoneMap[pin.Id];
+                var bone = layerToBoneMap[layer.Id];
 
-                if (!string.IsNullOrEmpty(pin.ParentPinId) && pinToBoneMap.TryGetValue(pin.ParentPinId, out var parentBone))
+                if (!string.IsNullOrEmpty(layer.ParentId) && layerToBoneMap.TryGetValue(layer.ParentId, out var parentBone))
                 {
                     bone.ParentId = parentBone.Id;
 
-                    var parentPin = Pins.FirstOrDefault(p => p.Id == pin.ParentPinId);
-                    if (parentPin != null)
+                    var parentLayer = ImageLayers.FirstOrDefault(l => l.Id == layer.ParentId);
+                    if (parentLayer != null)
                     {
-                        var dx = pin.X - parentPin.X;
-                        var dy = pin.Y - parentPin.Y;
+                        var dx = layer.JointX - parentLayer.JointX;
+                        var dy = layer.JointY - parentLayer.JointY;
                         var dist = Math.Sqrt(dx * dx + dy * dy);
 
                         if (dist > 5)
@@ -904,35 +823,11 @@ namespace Ymm4BoneAnimationPlugin.Views
                 else
                 {
                     bone.ParentId = string.Empty;
-                    // ルートボーンの初期配置座標
                     if (bone.X.Values.Count > 0)
-                        bone.X.Values[0].Value = Math.Round(pin.X, 1);
+                        bone.X.Values[0].Value = Math.Round(layer.JointX, 1);
                     if (bone.Y.Values.Count > 0)
-                        bone.Y.Values[0].Value = Math.Round(pin.Y, 1);
+                        bone.Y.Values[0].Value = Math.Round(layer.JointY, 1);
                 }
-            }
-
-            // 2. ピンが打たれていない画像パーツも「固定パーツ」としてボーン一覧に出力
-            foreach (var layer in ImageLayers)
-            {
-                if (usedImagePaths.Contains(layer.FilePath))
-                    continue;
-
-                var fileName = Path.GetFileNameWithoutExtension(layer.FilePath);
-                var fixedBone = new BoneItem(fileName)
-                {
-                    BaseZOrder = layer.ZOrder,
-                    AnchorX = 0.5f,
-                    AnchorY = 0.5f,
-                    ImageSlots = [new BoneImageSlot(fileName, layer.FilePath)],
-                };
-
-                if (fixedBone.X.Values.Count > 0)
-                    fixedBone.X.Values[0].Value = Math.Round(layer.X, 1);
-                if (fixedBone.Y.Values.Count > 0)
-                    fixedBone.Y.Values[0].Value = Math.Round(layer.Y, 1);
-
-                result.Add(fixedBone);
             }
 
             return result.ToImmutableList();
