@@ -136,14 +136,14 @@ namespace Ymm4BoneAnimationPlugin.Views
                         Source = bitmap,
                         Width = bitmap.PixelWidth,
                         Height = bitmap.PixelHeight,
-                        Opacity = 0.9,
+                        Opacity = 0.95,
                         IsHitTestVisible = false,
                     };
 
                     var selectionBorder = new Rectangle
                     {
-                        Stroke = new SolidColorBrush(Color.FromArgb(220, 0, 122, 204)),
-                        StrokeThickness = 2,
+                        Stroke = new SolidColorBrush(Color.FromArgb(240, 0, 150, 255)),
+                        StrokeThickness = 2.5,
                         StrokeDashArray = new DoubleCollection { 4, 2 },
                         Visibility = layer.IsSelected ? Visibility.Visible : Visibility.Collapsed,
                         IsHitTestVisible = false,
@@ -172,22 +172,25 @@ namespace Ymm4BoneAnimationPlugin.Views
                     {
                         if (e.ChangedButton == MouseButton.Left)
                         {
-                            viewModel.SelectedLayer = layer;
-
-                            if (viewModel.IsSelectMoveMode)
+                            if (viewModel.IsAddPinMode)
                             {
-                                draggingLayer = layer;
-                                layerMoved = false;
-                                var canvasPos = e.GetPosition(MainCanvas);
-                                layerDragStartOffset = new Point(layer.X - canvasPos.X, layer.Y - canvasPos.Y);
-                                container.CaptureMouse();
-                                e.Handled = true;
-                            }
-                            else if (viewModel.IsAddPinMode)
-                            {
-                                // ピン追加モード時は画像をクリックした位置にピンを追加
+                                // ピン追加モード時は画像をクリックした位置にピンを1つだけ追加
                                 var canvasPos = e.GetPosition(MainCanvas);
                                 viewModel.AddPinAt(canvasPos.X, canvasPos.Y);
+                                e.Handled = true;
+                            }
+                            else
+                            {
+                                viewModel.SelectedLayer = layer;
+
+                                if (viewModel.IsSelectMoveMode)
+                                {
+                                    draggingLayer = layer;
+                                    layerMoved = false;
+                                    var canvasPos = e.GetPosition(MainCanvas);
+                                    layerDragStartOffset = new Point(layer.X - canvasPos.X, layer.Y - canvasPos.Y);
+                                    container.CaptureMouse();
+                                }
                                 e.Handled = true;
                             }
                         }
@@ -276,8 +279,8 @@ namespace Ymm4BoneAnimationPlugin.Views
 
             var outerCircle = new Ellipse
             {
-                Width = 20,
-                Height = 20,
+                Width = 22,
+                Height = 22,
                 StrokeThickness = 2.5,
             };
 
@@ -288,29 +291,37 @@ namespace Ymm4BoneAnimationPlugin.Views
                 Fill = Brushes.White,
             };
 
+            var labelBorder = new Border
+            {
+                Background = new SolidColorBrush(Color.FromArgb(180, 20, 20, 20)),
+                CornerRadius = new CornerRadius(3),
+                Padding = new Thickness(4, 1, 4, 1),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Bottom,
+                Margin = new Thickness(0, 0, 0, -20),
+                IsHitTestVisible = false,
+            };
+
             var label = new TextBlock
             {
                 Text = pin.Name,
                 Foreground = Brushes.White,
-                FontSize = 11,
+                FontSize = 10,
                 FontWeight = FontWeights.Bold,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Bottom,
-                Margin = new Thickness(0, 0, 0, -16),
-                IsHitTestVisible = false,
             };
+            labelBorder.Child = label;
 
             void UpdateVisualState()
             {
                 if (pin.IsSelected)
                 {
-                    outerCircle.Fill = new SolidColorBrush(Color.FromArgb(220, 255, 102, 0));
+                    outerCircle.Fill = new SolidColorBrush(Color.FromArgb(230, 255, 102, 0));
                     outerCircle.Stroke = Brushes.White;
                 }
                 else
                 {
-                    outerCircle.Fill = new SolidColorBrush(Color.FromArgb(200, 0, 122, 204));
-                    outerCircle.Stroke = new SolidColorBrush(Color.FromArgb(220, 255, 255, 255));
+                    outerCircle.Fill = new SolidColorBrush(Color.FromArgb(210, 0, 122, 204));
+                    outerCircle.Stroke = Brushes.White;
                 }
             }
 
@@ -330,7 +341,7 @@ namespace Ymm4BoneAnimationPlugin.Views
             UpdateVisualState();
             container.Children.Add(outerCircle);
             container.Children.Add(innerCircle);
-            container.Children.Add(label);
+            container.Children.Add(labelBorder);
 
             Canvas.SetLeft(container, pin.X - 12);
             Canvas.SetTop(container, pin.Y - 12);
@@ -454,6 +465,13 @@ namespace Ymm4BoneAnimationPlugin.Views
             }
             else if (e.ChangedButton == MouseButton.Left)
             {
+                // クリックされた要素がピンや画像パーツであれば親の処理はスキップ
+                var src = e.OriginalSource as DependencyObject;
+                if (IsDescendantOf(src, PinsCanvas) || IsDescendantOf(src, ImageLayerCanvas))
+                {
+                    return;
+                }
+
                 var canvasPos = e.GetPosition(MainCanvas);
 
                 if (viewModel.IsAddPinMode)
@@ -463,11 +481,24 @@ namespace Ymm4BoneAnimationPlugin.Views
                 }
                 else
                 {
-                    // 何もない場所をクリックした場合は選択解除
+                    // 何もない背景をクリックした場合は選択解除
                     viewModel.SelectedPin = null;
                     viewModel.SelectedLayer = null;
                 }
             }
+        }
+
+        static bool IsDescendantOf(DependencyObject? node, DependencyObject? parent)
+        {
+            while (node != null)
+            {
+                if (ReferenceEquals(node, parent))
+                    return true;
+                node = node is Visual or System.Windows.Media.Media3D.Visual3D
+                    ? VisualTreeHelper.GetParent(node)
+                    : LogicalTreeHelper.GetParent(node);
+            }
+            return false;
         }
 
         void Canvas_MouseMove(object sender, MouseEventArgs e)
@@ -550,29 +581,42 @@ namespace Ymm4BoneAnimationPlugin.Views
                 Filter = "画像ファイル (*.png;*.jpg;*.jpeg;*.bmp;*.webp;*.svg)|*.png;*.jpg;*.jpeg;*.bmp;*.webp;*.svg|すべてのファイル (*.*)|*.*",
             };
 
-            if (dialog.ShowDialog() == true)
+            if (dialog.ShowDialog() == true && !string.IsNullOrWhiteSpace(dialog.FileName))
             {
                 viewModel.SelectedPin.ImagePath = dialog.FileName;
-                viewModel.AddImageFiles(new[] { dialog.FileName });
+                if (!viewModel.ImageLayers.Any(l => l.FilePath.Equals(dialog.FileName, StringComparison.OrdinalIgnoreCase)))
+                {
+                    viewModel.ImageLayers.Add(new PuppetImageLayerViewModel(dialog.FileName)
+                    {
+                        X = viewModel.SelectedPin.X,
+                        Y = viewModel.SelectedPin.Y,
+                        ZOrder = viewModel.SelectedPin.ZOrder,
+                    });
+                }
             }
         }
 
         void ApplyButton_Click(object sender, RoutedEventArgs e)
         {
             IsApplied = true;
+            DialogResult = true;
             Close();
         }
 
         void CancelButton_Click(object sender, RoutedEventArgs e)
         {
             IsApplied = false;
+            DialogResult = false;
             Close();
         }
     }
 
-    internal class NotNullToBoolConverter : IValueConverter
+    public class NotNullToBoolConverter : IValueConverter
     {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) => value != null;
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => throw new NotImplementedException();
+        public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+            => value != null;
+
+        public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+            => throw new NotImplementedException();
     }
 }

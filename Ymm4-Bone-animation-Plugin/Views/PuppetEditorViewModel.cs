@@ -667,13 +667,16 @@ namespace Ymm4BoneAnimationPlugin.Views
         }
 
         /// <summary>
-        /// パペットエディタのピン・ボーン構成を YMM4 の BoneItem リストへ変換して出力する。
+        /// パペットエディタのピン・ボーン構成（およびピンのない固定パーツ画像）を
+        /// YMM4 の BoneItem リストへ変換して出力する。
         /// </summary>
         public ImmutableList<BoneItem> ExportToBoneItems()
         {
             var result = new List<BoneItem>();
             var pinToBoneMap = new Dictionary<string, BoneItem>();
+            var usedImagePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+            // 1. ピンが打たれたボーンを生成
             foreach (var pin in Pins)
             {
                 var bone = pin.OriginalBone != null
@@ -697,12 +700,14 @@ namespace Ymm4BoneAnimationPlugin.Views
                 {
                     var fileName = Path.GetFileNameWithoutExtension(pin.ImagePath);
                     bone.ImageSlots = [new BoneImageSlot(fileName, pin.ImagePath)];
+                    usedImagePaths.Add(pin.ImagePath);
                 }
 
                 pinToBoneMap[pin.Id] = bone;
                 result.Add(bone);
             }
 
+            // 親子関係および長さ・相対オフセットの計算
             foreach (var pin in Pins)
             {
                 var bone = pinToBoneMap[pin.Id];
@@ -725,7 +730,35 @@ namespace Ymm4BoneAnimationPlugin.Views
                 else
                 {
                     bone.ParentId = string.Empty;
+                    // ルートボーンの初期配置座標
+                    if (bone.X.Values.Count > 0)
+                        bone.X.Values[0].Value = Math.Round(pin.X, 1);
+                    if (bone.Y.Values.Count > 0)
+                        bone.Y.Values[0].Value = Math.Round(pin.Y, 1);
                 }
+            }
+
+            // 2. ピンが打たれていない画像パーツも「固定パーツ」としてボーン一覧に出力
+            foreach (var layer in ImageLayers)
+            {
+                if (usedImagePaths.Contains(layer.FilePath))
+                    continue;
+
+                var fileName = Path.GetFileNameWithoutExtension(layer.FilePath);
+                var fixedBone = new BoneItem(fileName)
+                {
+                    BaseZOrder = layer.ZOrder,
+                    AnchorX = 0.5f,
+                    AnchorY = 0.5f,
+                    ImageSlots = [new BoneImageSlot(fileName, layer.FilePath)],
+                };
+
+                if (fixedBone.X.Values.Count > 0)
+                    fixedBone.X.Values[0].Value = Math.Round(layer.X, 1);
+                if (fixedBone.Y.Values.Count > 0)
+                    fixedBone.Y.Values[0].Value = Math.Round(layer.Y, 1);
+
+                result.Add(fixedBone);
             }
 
             return result.ToImmutableList();
