@@ -263,6 +263,7 @@ namespace Ymm4BoneAnimationPlugin.Views
         public ActionCommand SendLayerToBackCommand { get; }
         public ActionCommand DeleteLayerCommand { get; }
         public ActionCommand UnlinkParentCommand { get; }
+        public ActionCommand ConnectToPreviousLayerCommand { get; }
 
         public PuppetEditorViewModel(ImmutableList<BoneItem> existingBones)
         {
@@ -277,6 +278,7 @@ namespace Ymm4BoneAnimationPlugin.Views
             SendLayerToBackCommand = new ActionCommand(_ => SelectedLayer != null, _ => SendSelectedLayerToBack());
             DeleteLayerCommand = new ActionCommand(_ => SelectedLayer != null, _ => DeleteSelectedLayer());
             UnlinkParentCommand = new ActionCommand(_ => SelectedLayer?.HasParent == true, _ => SetLayerParent(SelectedLayer, null));
+            ConnectToPreviousLayerCommand = new ActionCommand(_ => CanConnectToPrevious(), _ => ConnectToPrevious());
 
             ImageLayers.CollectionChanged += (s, e) =>
             {
@@ -285,6 +287,23 @@ namespace Ymm4BoneAnimationPlugin.Views
             };
 
             ImportExistingBones(existingBones);
+        }
+
+        bool CanConnectToPrevious()
+        {
+            if (SelectedLayer == null || ImageLayers.Count <= 1)
+                return false;
+            var index = ImageLayers.IndexOf(SelectedLayer);
+            return index > 0;
+        }
+
+        void ConnectToPrevious()
+        {
+            if (!CanConnectToPrevious() || SelectedLayer == null)
+                return;
+            var index = ImageLayers.IndexOf(SelectedLayer);
+            var prev = ImageLayers[index - 1];
+            ConnectLayers(prev, SelectedLayer);
         }
 
         void RaiseCommandStates()
@@ -298,6 +317,7 @@ namespace Ymm4BoneAnimationPlugin.Views
             SendLayerToBackCommand.RaiseCanExecuteChanged();
             DeleteLayerCommand.RaiseCanExecuteChanged();
             UnlinkParentCommand.RaiseCanExecuteChanged();
+            ConnectToPreviousLayerCommand.RaiseCanExecuteChanged();
         }
 
         #region Undo / Redo

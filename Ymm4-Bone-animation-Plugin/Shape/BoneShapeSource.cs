@@ -259,8 +259,9 @@ namespace Ymm4BoneAnimationPlugin.Shape
         }
 
         /// <summary>
-        /// 完全パペット変形方式：回転用・移動用の区別を全廃し、
-        /// 各関節ピンを直接掴んでドラッグするだけで自然に変形する1ピン＝1点コントローラー。
+        /// 完全パペット変形方式：
+        /// プレビュー画面には「現在選択されているパーツのピン（1点のみ）」を表示し、
+        /// 画面上に複数の丸が重複して並ばないようにする。
         /// </summary>
         void UpdateControllers(
             IReadOnlyList<BoneTransform> transforms,
@@ -272,73 +273,74 @@ namespace Ymm4BoneAnimationPlugin.Shape
             var controllers = new List<VideoController>();
             var transformMap = transforms.ToDictionary(t => t.Bone.Id);
 
-            foreach (var transform in transforms)
+            // 選択されているボーン、なければ先頭（ルート）ボーンの1つだけを対象にする
+            var targetTransform = transforms.FirstOrDefault(t => t.Bone.Id == parameter.SelectedBoneId)
+                                  ?? transforms.FirstOrDefault();
+
+            if (targetTransform != null && itemMap.TryGetValue(targetTransform.Bone.Id, out var item))
             {
-                if (!itemMap.TryGetValue(transform.Bone.Id, out var item))
-                    continue;
+                var origin = targetTransform.Origin;
+                if (MathHelper.IsFinite(origin))
+                {
+                    var isRoot = string.IsNullOrEmpty(targetTransform.Bone.ParentId);
 
-                var origin = transform.Origin;
-                if (!MathHelper.IsFinite(origin))
-                    continue;
-
-                var isRoot = string.IsNullOrEmpty(transform.Bone.ParentId);
-
-                // 単一のパペットピン（ドラッグした位置へ関節を引っ張る）
-                var puppetPin = new ControllerPoint(
-                    new Vector3(origin.X, origin.Y, 0),
-                    arg =>
-                    {
-                        parameter.SelectedBoneId = item.Id;
-                        var delta = new Vector2(arg.Delta.X, arg.Delta.Y);
-
-                        if (item.IsIkEnabled)
+                    // 単一のパペットピン（ドラッグした位置へ関節を引っ張る）
+                    var puppetPin = new ControllerPoint(
+                        new Vector3(origin.X, origin.Y, 0),
+                        arg =>
                         {
-                            // IK有効時はIKターゲットをドラッグ位置へ移動
-                            item.IkTargetX.AddToEachValues(delta.X);
-                            item.IkTargetY.AddToEachValues(delta.Y);
-                        }
-                        else if (isRoot)
-                        {
-                            // ルートピン（体）は全体を掴んでドラッグ移動
-                            var localDelta = ToLocalDelta(delta, transform);
-                            item.X.AddToEachValues(localDelta.X);
-                            item.Y.AddToEachValues(localDelta.Y);
-                        }
-                        else
-                        {
-                            // 親を持つピン（手足・頭）は親関節を中心として直感追従（パペット変形）
-                            if (transformMap.TryGetValue(transform.Bone.ParentId!, out var parentTransform)
-                                && itemMap.TryGetValue(transform.Bone.ParentId!, out var parentItem))
+                            parameter.SelectedBoneId = item.Id;
+                            var delta = new Vector2(arg.Delta.X, arg.Delta.Y);
+
+                            if (item.IsIkEnabled)
                             {
-                                var parentOrigin = parentTransform.Origin;
-                                var currentVec = transform.Origin - parentOrigin;
-                                var targetVec = (transform.Origin + delta) - parentOrigin;
-
-                                if (currentVec.LengthSquared() > 1f && targetVec.LengthSquared() > 1f)
-                                {
-                                    var deltaAngle = MathHelper.DeltaDegrees(
-                                        MathHelper.ToDegrees(currentVec),
-                                        MathHelper.ToDegrees(targetVec));
-
-                                    if (Math.Abs(deltaAngle) > 0.001f)
-                                    {
-                                        parentItem.Rotation.AddToEachValues(deltaAngle);
-                                    }
-                                }
+                                // IK有効時はIKターゲットをドラッグ位置へ移動
+                                item.IkTargetX.AddToEachValues(delta.X);
+                                item.IkTargetY.AddToEachValues(delta.Y);
                             }
-                            else
+                            else if (isRoot)
                             {
-                                var localDelta = ToLocalDelta(delta, transform);
+                                // ルートピン（体）は全体を掴んでドラッグ移動
+                                var localDelta = ToLocalDelta(delta, targetTransform);
                                 item.X.AddToEachValues(localDelta.X);
                                 item.Y.AddToEachValues(localDelta.Y);
                             }
-                        }
-                    });
+                            else
+                            {
+                                // 親を持つピン（手足・頭）は親関節を中心として直感追従（パペット変形）
+                                if (transformMap.TryGetValue(targetTransform.Bone.ParentId!, out var parentTransform)
+                                    && itemMap.TryGetValue(targetTransform.Bone.ParentId!, out var parentItem))
+                                {
+                                    var parentOrigin = parentTransform.Origin;
+                                    var currentVec = targetTransform.Origin - parentOrigin;
+                                    var targetVec = (targetTransform.Origin + delta) - parentOrigin;
 
-                controllers.Add(new VideoController([puppetPin])
-                {
-                    Connection = VideoControllerPointConnection.None,
-                });
+                                    if (currentVec.LengthSquared() > 1f && targetVec.LengthSquared() > 1f)
+                                    {
+                                        var deltaAngle = MathHelper.DeltaDegrees(
+                                            MathHelper.ToDegrees(currentVec),
+                                            MathHelper.ToDegrees(targetVec));
+
+                                        if (Math.Abs(deltaAngle) > 0.001f)
+                                        {
+                                            parentItem.Rotation.AddToEachValues(deltaAngle);
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    var localDelta = ToLocalDelta(delta, targetTransform);
+                                    item.X.AddToEachValues(localDelta.X);
+                                    item.Y.AddToEachValues(localDelta.Y);
+                                }
+                            }
+                        });
+
+                    controllers.Add(new VideoController([puppetPin])
+                    {
+                        Connection = VideoControllerPointConnection.None,
+                    });
+                }
             }
 
             Controllers = controllers;
