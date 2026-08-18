@@ -59,10 +59,12 @@
                     <Button Content="↪ 進む" Command="{Binding RedoCommand}" ToolTip="やり直す (Ctrl+Y / Ctrl+Shift+Z)"/>
                     <Separator Width="1" Margin="6,2" Background="#3F3F46"/>
 
-                    <RadioButton Content="📍 ピン・ボーン作成 (クリック)" IsChecked="{Binding IsAddPinAndBoneMode}" Padding="6,2"
-                                 ToolTip="パーツ画像上の関節位置をクリックしてピンを打ちます。直前のピンと自動的に骨組み（ボーン）が繋がります"/>
-                    <RadioButton Content="🖐 移動・選択" IsChecked="{Binding IsSelectMoveMode}" Padding="6,2"
+                    <RadioButton Content="🖐 移動・選択" IsChecked="{Binding IsSelectMoveMode}" Padding="5,2"
                                  ToolTip="画像パーツやピンをドラッグ移動したり、クリックして選択します"/>
+                    <RadioButton Content="📍 ピン追加 (クリック)" IsChecked="{Binding IsAddPinMode}" Padding="5,2"
+                                 ToolTip="パーツ画像上の関節位置をクリックしてピンを追加します"/>
+                    <RadioButton Content="🦴 ボーン接続 (ドラッグ)" IsChecked="{Binding IsConnectBoneMode}" Padding="5,2"
+                                 ToolTip="ピンから別のピンへドラッグしてボーン（親子関係）を結びます"/>
                     <Separator Width="1" Margin="6,2" Background="#3F3F46"/>
 
                     <Button Content="📁 画像追加" Command="{Binding AddImagesCommand}" ToolTip="パーツ画像を追加します（直接ドラッグ＆ドロップも可能）"/>
@@ -201,15 +203,28 @@
                                     <Button Content="⏬ 最背面" Command="{Binding SendLayerToBackCommand}" Padding="5,2" Margin="0,0,3,0" ToolTip="一番奥に表示"/>
                                     <Button Content="🗑 削除" Command="{Binding DeleteLayerCommand}" Padding="5,2" ToolTip="パーツを削除"/>
                                 </WrapPanel>
-                                <Border BorderBrush="#3F3F46" BorderThickness="1" Background="#1E1E1E" Height="110">
+                                <Border BorderBrush="#3F3F46" BorderThickness="1" Background="#1E1E1E" Height="130">
                                     <ListBox ItemsSource="{Binding ImageLayers}" SelectedItem="{Binding SelectedLayer, Mode=TwoWay}"
                                              Background="Transparent" BorderThickness="0" Foreground="#EEEEEE">
                                         <ListBox.ItemTemplate>
                                             <DataTemplate>
-                                                <StackPanel Orientation="Horizontal" Margin="2">
-                                                    <TextBlock Text="🖼 " Foreground="#888888"/>
-                                                    <TextBlock Text="{Binding FileName}" FontWeight="SemiBold"/>
-                                                </StackPanel>
+                                                <Grid Margin="2,3" VerticalAlignment="Center">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="36"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <!-- サムネイルプレビュー -->
+                                                    <Border Grid.Column="0" Width="32" Height="32" Background="#2A2A2D" BorderBrush="#4A4A4D" BorderThickness="1" CornerRadius="2">
+                                                        <Image Source="{Binding Thumbnail}" Stretch="Uniform" Margin="1"/>
+                                                    </Border>
+
+                                                    <!-- ファイル名とサイズ -->
+                                                    <StackPanel Grid.Column="1" Margin="6,0,0,0" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding FileName}" FontWeight="Bold" FontSize="11" TextTrimming="CharacterEllipsis"/>
+                                                        <TextBlock Text="{Binding ZOrder, StringFormat='Z順: {0}'}" Foreground="#888888" FontSize="10"/>
+                                                    </StackPanel>
+                                                </Grid>
                                             </DataTemplate>
                                         </ListBox.ItemTemplate>
                                     </ListBox>
