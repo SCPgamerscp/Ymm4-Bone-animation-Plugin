@@ -8,6 +8,7 @@ using YukkuriMovieMaker.Commons;
 using YukkuriMovieMaker.Player.Video;
 using Ymm4BoneAnimationPlugin.Core;
 using Ymm4BoneAnimationPlugin.Rendering;
+using MathHelper = Ymm4BoneAnimationPlugin.Core.MathHelper;
 
 namespace Ymm4BoneAnimationPlugin.Shape
 {
@@ -25,6 +26,9 @@ namespace Ymm4BoneAnimationPlugin.Shape
         readonly ID2D1SolidColorBrush boneBrush;
         readonly ID2D1SolidColorBrush jointBrush;
         readonly ID2D1SolidColorBrush ikBrush;
+        readonly ID2D1SolidColorBrush selectedBoneBrush;
+        readonly ID2D1SolidColorBrush selectedJointBrush;
+        readonly ID2D1SolidColorBrush anchorBrush;
 
         // 不透明度エフェクトは毎フレーム作り直すとプレビューが重くなるため使い回す
         readonly Vortice.Direct2D1.Effects.Opacity opacityEffect;
@@ -49,9 +53,12 @@ namespace Ymm4BoneAnimationPlugin.Shape
 
             var dc = devices.DeviceContext;
             // ガイド表示用のブラシはコンストラクタで作成し、使い回す。
-            boneBrush = dc.CreateSolidColorBrush(new Color4(0.2f, 0.8f, 1f, 0.75f));
+            boneBrush = dc.CreateSolidColorBrush(new Color4(0.2f, 0.75f, 1f, 0.75f));
             jointBrush = dc.CreateSolidColorBrush(new Color4(1f, 0.9f, 0.2f, 0.9f));
             ikBrush = dc.CreateSolidColorBrush(new Color4(1f, 0.35f, 0.35f, 0.9f));
+            selectedBoneBrush = dc.CreateSolidColorBrush(new Color4(1f, 0.55f, 0f, 0.95f)); // 鮮やかなオレンジ
+            selectedJointBrush = dc.CreateSolidColorBrush(new Color4(1f, 0.2f, 0f, 1f));   // 濃いオレンジレッド
+            anchorBrush = dc.CreateSolidColorBrush(new Color4(0.2f, 0.95f, 0.4f, 0.95f));   // エメラルドグリーン
 
             opacityEffect = new Vortice.Direct2D1.Effects.Opacity(dc);
             // EffectからgetしたOutputは必ずDisposeする必要がある。Effect側では解放されない。
@@ -198,32 +205,60 @@ namespace Ymm4BoneAnimationPlugin.Shape
         {
             dc.Transform = Matrix3x2.Identity;
 
+            var selectedId = parameter.SelectedBoneId;
+
+            // まず非選択ボーンを描画し、後から選択中ボーンを手前に重ねて描画する
             foreach (var transform in transforms)
             {
-                var origin = transform.Origin;
-                var tip = transform.Tip;
-
-                if (!MathHelper.IsFinite(origin) || !MathHelper.IsFinite(tip))
+                if (transform.Bone.Id == selectedId)
                     continue;
+                DrawSingleBoneGuide(dc, transform, false);
+            }
 
-                // ボーン本体
-                dc.DrawLine(origin, tip, boneBrush, 2f);
+            // 選択ボーンを手前にハイライト描画
+            foreach (var transform in transforms)
+            {
+                if (transform.Bone.Id == selectedId)
+                    DrawSingleBoneGuide(dc, transform, true);
+            }
+        }
 
-                // 関節
-                dc.FillEllipse(new Ellipse(origin, 4f, 4f), jointBrush);
+        void DrawSingleBoneGuide(ID2D1DeviceContext dc, BoneTransform transform, bool isSelected)
+        {
+            var origin = transform.Origin;
+            var tip = transform.Tip;
 
-                // IKターゲット
-                if (transform.Bone.Ik is { IsEnabled: true } ik && MathHelper.IsFinite(ik.Target))
-                {
-                    dc.DrawEllipse(new Ellipse(ik.Target, 7f, 7f), ikBrush, 2f);
-                    dc.DrawLine(tip, ik.Target, ikBrush, 1f);
-                }
+            if (!MathHelper.IsFinite(origin) || !MathHelper.IsFinite(tip))
+                return;
+
+            var bBrush = isSelected ? selectedBoneBrush : boneBrush;
+            var jBrush = isSelected ? selectedJointBrush : jointBrush;
+            var lineWidth = isSelected ? 4.5f : 2f;
+            var jointRadius = isSelected ? 6.5f : 4f;
+
+            // ボーン本体
+            dc.DrawLine(origin, tip, bBrush, lineWidth);
+
+            // 関節（根本）
+            dc.FillEllipse(new Ellipse(origin, jointRadius, jointRadius), jBrush);
+            if (isSelected)
+                dc.DrawEllipse(new Ellipse(origin, jointRadius + 2f, jointRadius + 2f), bBrush, 1.5f);
+
+            // 先端
+            var tipRadius = isSelected ? 4.5f : 3f;
+            dc.FillEllipse(new Ellipse(tip, tipRadius, tipRadius), bBrush);
+
+            // IKターゲット
+            var ik = transform.Bone.Ik;
+            if (ik is { IsEnabled: true } && MathHelper.IsFinite(ik.Target))
+            {
+                dc.DrawEllipse(new Ellipse(ik.Target, 7f, 7f), ikBrush, 2f);
+                dc.DrawLine(tip, ik.Target, ikBrush, 1f);
             }
         }
 
         /// <summary>
         /// プレビュー上でドラッグできる制御点を更新する。
-        /// ボーン先端をドラッグで回転、IKターゲットをドラッグで移動できる。
         /// </summary>
         void UpdateControllers(
             IReadOnlyList<BoneTransform> transforms,
@@ -239,40 +274,42 @@ namespace Ymm4BoneAnimationPlugin.Shape
                 if (!itemMap.TryGetValue(transform.Bone.Id, out var item))
                     continue;
 
-                // --- ボーン位置の移動ハンドル（根本） ---
                 var origin = transform.Origin;
-                if (MathHelper.IsFinite(origin))
-                {
-                    var movePoint = new ControllerPoint(
-                        new Vector3(origin.X, origin.Y, 0),
-                        arg =>
-                        {
-                            // 親の回転を打ち消してローカル座標での移動量に変換する
-                            var delta = ToLocalDelta(new Vector2(arg.Delta.X, arg.Delta.Y), transform);
-                            item.X.AddToEachValues(delta.X);
-                            item.Y.AddToEachValues(delta.Y);
-                        });
+                var tip = transform.Tip;
+                if (!MathHelper.IsFinite(origin) || !MathHelper.IsFinite(tip))
+                    continue;
 
-                    // --- ボーン先端の回転ハンドル ---
-                    var tip = transform.Tip;
-                    var rotatePoint = new ControllerPoint(
-                        new Vector3(tip.X, tip.Y, 0),
-                        arg =>
-                        {
-                            var current = transform.Tip - transform.Origin;
-                            var dragged = current + new Vector2(arg.Delta.X, arg.Delta.Y);
-                            var deltaAngle = MathHelper.DeltaDegrees(
-                                MathHelper.ToDegrees(current),
-                                MathHelper.ToDegrees(dragged));
-                            if (Math.Abs(deltaAngle) > 0.0001f)
-                                item.Rotation.AddToEachValues(deltaAngle);
-                        });
-
-                    controllers.Add(new VideoController([movePoint, rotatePoint])
+                // --- ボーン位置の移動ハンドル（根本） ---
+                var movePoint = new ControllerPoint(
+                    new Vector3(origin.X, origin.Y, 0),
+                    arg =>
                     {
-                        Connection = VideoControllerPointConnection.Line,
+                        parameter.SelectedBoneId = item.Id;
+                        var delta = ToLocalDelta(new Vector2(arg.Delta.X, arg.Delta.Y), transform);
+                        item.X.AddToEachValues(delta.X);
+                        item.Y.AddToEachValues(delta.Y);
                     });
-                }
+
+                // --- ボーン先端のハンドル（回転） ---
+                var rotatePoint = new ControllerPoint(
+                    new Vector3(tip.X, tip.Y, 0),
+                    arg =>
+                    {
+                        parameter.SelectedBoneId = item.Id;
+                        var current = transform.Tip - transform.Origin;
+                        var dragged = current + new Vector2(arg.Delta.X, arg.Delta.Y);
+
+                        var deltaAngle = MathHelper.DeltaDegrees(
+                            MathHelper.ToDegrees(current),
+                            MathHelper.ToDegrees(dragged));
+                        if (Math.Abs(deltaAngle) > 0.0001f)
+                            item.Rotation.AddToEachValues(deltaAngle);
+                    });
+
+                controllers.Add(new VideoController([movePoint, rotatePoint])
+                {
+                    Connection = VideoControllerPointConnection.Line,
+                });
 
                 // --- IKターゲットのハンドル ---
                 if (item.IsIkEnabled)
@@ -284,6 +321,7 @@ namespace Ymm4BoneAnimationPlugin.Shape
                             new Vector3(target.X, target.Y, 0),
                             arg =>
                             {
+                                parameter.SelectedBoneId = item.Id;
                                 item.IkTargetX.AddToEachValues(arg.Delta.X);
                                 item.IkTargetY.AddToEachValues(arg.Delta.Y);
                             });
@@ -348,6 +386,9 @@ namespace Ymm4BoneAnimationPlugin.Shape
             boneBrush.Dispose();
             jointBrush.Dispose();
             ikBrush.Dispose();
+            selectedBoneBrush.Dispose();
+            selectedJointBrush.Dispose();
+            anchorBrush.Dispose();
         }
     }
 }

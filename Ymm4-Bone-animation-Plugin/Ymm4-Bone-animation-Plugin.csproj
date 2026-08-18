@@ -63,4 +63,19 @@
 		<Exec Command="mkdir &quot;$(YMM4DirPath)user\plugin\$(ProjectName)&quot; &gt; NUL 2&gt;&amp;1&#xD;&#xA;copy &quot;$(TargetPath)&quot; &quot;$(YMM4DirPath)user\plugin\$(ProjectName)\&quot;" />
 	</Target>
 
+	<!-- .ymme 配布用パッケージを自動作成する -->
+	<Target Name="PackageYmme" AfterTargets="Build">
+		<PropertyGroup>
+			<PackageStagingDir>$(IntermediateOutputPath)ymme_staging\$(ProjectName)\</PackageStagingDir>
+			<PackageOutputFile>$(RepoRoot)$(ProjectName).ymme</PackageOutputFile>
+		</PropertyGroup>
+		<RemoveDir Directories="$(IntermediateOutputPath)ymme_staging" />
+		<MakeDir Directories="$(PackageStagingDir)" />
+		<Copy SourceFiles="$(TargetPath)" DestinationFolder="$(PackageStagingDir)" />
+		<Copy SourceFiles="$(RepoRoot)README.md" DestinationFolder="$(PackageStagingDir)" Condition="Exists('$(RepoRoot)README.md')" />
+		<Delete Files="$(PackageOutputFile)" Condition="Exists('$(PackageOutputFile)')" />
+		<ZipDirectory SourceDirectory="$(IntermediateOutputPath)ymme_staging" DestinationFile="$(PackageOutputFile)" Overwrite="true" />
+		<Message Importance="High" Text="Created YMME Package: $(PackageOutputFile)" />
+	</Target>
+
 </Project>

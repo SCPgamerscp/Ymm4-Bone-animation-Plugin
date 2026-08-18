@@ -15,21 +15,31 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- 操作ボタン -->
-        <WrapPanel Grid.Row="0" Margin="0,0,0,4">
-            <Button Content="＋ 追加" Command="{Binding AddCommand}" Margin="0,0,4,0" Padding="6,2"
-                    ToolTip="同じ階層にボーンを追加します"/>
-            <Button Content="＋ 子を追加" Command="{Binding AddChildCommand}" Margin="0,0,4,0" Padding="6,2"
-                    ToolTip="選択中のボーンの子としてボーンを追加します"/>
-            <Button Content="－ 削除" Command="{Binding RemoveCommand}" Margin="0,0,4,0" Padding="6,2"
-                    ToolTip="選択中のボーンを削除します（子は親に引き継がれます）"/>
-            <Button Content="▲" Command="{Binding MoveUpCommand}" Margin="0,0,4,0" Padding="6,2"
-                    ToolTip="描画順を前へ"/>
-            <Button Content="▼" Command="{Binding MoveDownCommand}" Margin="0,0,4,0" Padding="6,2"
-                    ToolTip="描画順を後ろへ"/>
-            <Button Content="親を解除" Command="{Binding UnparentCommand}" Padding="6,2"
-                    ToolTip="選択中のボーンをルートに戻します"/>
-        </WrapPanel>
+        <!-- 操作ツールバー -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,6">
+            <!-- パペットボーンエディタ起動ボタン（メイン） -->
+            <Button Content="🛠 ボーンエディタを開く (パペット変形)" Command="{Binding OpenPuppetEditorCommand}"
+                    Background="#0E639C" Foreground="#FFFFFF" BorderBrush="#1177BB" FontWeight="Bold" Padding="8,6" Margin="0,0,0,6"
+                    ToolTip="独立した編集ウィンドウを開き、画像をクリックしてピン追加・ドラッグでボーン接続を行います"/>
+
+            <!-- 画像一括追加 & ボーン構造操作 -->
+            <WrapPanel Margin="0,0,0,2">
+                <Button Content="📁 画像一括追加" Command="{Binding AddImagesCommand}" Margin="0,0,4,0" Padding="6,2"
+                        ToolTip="複数のパーツ画像ファイルを選択してボーンを一括生成します"/>
+                <Button Content="＋ 追加" Command="{Binding AddCommand}" Margin="0,0,4,0" Padding="6,2"
+                        ToolTip="同じ階層にボーンを追加します"/>
+                <Button Content="＋ 子を追加" Command="{Binding AddChildCommand}" Margin="0,0,4,0" Padding="6,2"
+                        ToolTip="選択中のボーンの子としてボーンを追加します"/>
+                <Button Content="－ 削除" Command="{Binding RemoveCommand}" Margin="0,0,4,0" Padding="6,2"
+                        ToolTip="選択中のボーンを削除します（子は親に引き継がれます）"/>
+                <Button Content="▲" Command="{Binding MoveUpCommand}" Margin="0,0,4,0" Padding="6,2"
+                        ToolTip="描画順を前へ"/>
+                <Button Content="▼" Command="{Binding MoveDownCommand}" Margin="0,0,4,0" Padding="6,2"
+                        ToolTip="描画順を後ろへ"/>
+                <Button Content="親を解除" Command="{Binding UnparentCommand}" Padding="6,2"
+                        ToolTip="選択中のボーンをルートに戻します"/>
+            </WrapPanel>
+        </StackPanel>
 
         <!-- ボーン階層ツリー（ドラッグ＆ドロップで親子関係を変更） -->
         <Border Grid.Row="1" BorderBrush="#40808080" BorderThickness="1">

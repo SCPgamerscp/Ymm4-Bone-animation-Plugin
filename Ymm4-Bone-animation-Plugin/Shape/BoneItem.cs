@@ -7,6 +7,7 @@ using System.Numerics;
 using YukkuriMovieMaker.Commons;
 using YukkuriMovieMaker.Controls;
 using Ymm4BoneAnimationPlugin.Core;
+using Ymm4BoneAnimationPlugin.Views;
 
 namespace Ymm4BoneAnimationPlugin.Shape
 {
@@ -393,6 +394,17 @@ namespace Ymm4BoneAnimationPlugin.Shape
         /// <summary>指定フレームの差分画像番号を評価する。</summary>
         public int GetSlotIndex(int frame, int length, int fps)
             => (int)System.Math.Round(SlotIndex.GetValue(frame, length, fps));
+
+        /// <summary>
+        /// プレビュー上のアンカードラッグ量を画像内のローカル比率に変換して適用する。
+        /// </summary>
+        public void AdjustAnchor(float deltaX, float deltaY, float imageWidth, float imageHeight)
+        {
+            if (imageWidth > 1f)
+                AnchorX = System.Math.Clamp(AnchorX + deltaX / imageWidth, -2.0, 3.0);
+            if (imageHeight > 1f)
+                AnchorY = System.Math.Clamp(AnchorY + deltaY / imageHeight, -2.0, 3.0);
+        }
 
         static List<string> SplitNames(string value)
         {

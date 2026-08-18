@@ -15,3 +15,7 @@ Directory.Build.props
 # Test results
 TestResults/
 *.trx
+
+# Generated distribution packages
+*.ymme
+

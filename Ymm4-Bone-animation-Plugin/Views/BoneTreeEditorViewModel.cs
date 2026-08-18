@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.Windows;
 using YukkuriMovieMaker.Commons;
 using Ymm4BoneAnimationPlugin.Core;
 using Ymm4BoneAnimationPlugin.Shape;
@@ -36,7 +37,11 @@ namespace Ymm4BoneAnimationPlugin.Views
             set
             {
                 if (Set(ref selectedBone, value))
+                {
+                    if (item is BoneShapeParameter param && param.SelectedBoneId != value?.Id)
+                        param.SelectedBoneId = value?.Id;
                     RaiseCommandStates();
+                }
             }
         }
         BoneItem? selectedBone;
@@ -47,6 +52,8 @@ namespace Ymm4BoneAnimationPlugin.Views
         public ActionCommand MoveUpCommand { get; }
         public ActionCommand MoveDownCommand { get; }
         public ActionCommand UnparentCommand { get; }
+        public ActionCommand AddImagesCommand { get; }
+        public ActionCommand OpenPuppetEditorCommand { get; }
 
         public BoneTreeEditorViewModel(ItemProperty[] properties)
         {
@@ -78,13 +85,128 @@ namespace Ymm4BoneAnimationPlugin.Views
                 _ => SelectedBone != null && !string.IsNullOrEmpty(SelectedBone.ParentId),
                 _ => SetParent(SelectedBone!.Id, string.Empty));
 
+            AddImagesCommand = new ActionCommand(
+                _ => true,
+                _ => SelectAndAddImages());
+
+            OpenPuppetEditorCommand = new ActionCommand(
+                _ => true,
+                _ => OpenPuppetEditor());
+
             Reload();
+        }
+
+        void OpenPuppetEditor()
+        {
+            var editorVm = new PuppetEditorViewModel(Bones.ToImmutableList());
+            var window = new PuppetEditorWindow(editorVm);
+            if (Application.Current?.MainWindow != null)
+                window.Owner = Application.Current.MainWindow;
+
+            window.ShowDialog();
+
+            if (window.IsApplied)
+            {
+                BeginEdit?.Invoke(this, EventArgs.Empty);
+                var exported = editorVm.ExportToBoneItems();
+                Commit(exported.ToList());
+                EndEdit?.Invoke(this, EventArgs.Empty);
+
+                SelectedBone = Bones.FirstOrDefault();
+            }
         }
 
         void OnItemPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == properties[0].PropertyInfo.Name)
+            {
                 Reload();
+            }
+            else if (e.PropertyName == nameof(BoneShapeParameter.SelectedBoneId))
+            {
+                if (item is BoneShapeParameter param && SelectedBone?.Id != param.SelectedBoneId)
+                    SyncSelectedBone(param.SelectedBoneId);
+            }
+        }
+
+        void SyncSelectedBone(string? boneId)
+        {
+            if (string.IsNullOrEmpty(boneId))
+            {
+                SelectedBone = null;
+                return;
+            }
+
+            var target = Bones.FirstOrDefault(b => b.Id == boneId);
+            if (target != null && selectedBone?.Id != boneId)
+            {
+                selectedBone = target;
+                OnPropertyChanged(nameof(SelectedBone));
+
+                void Walk(IEnumerable<BoneTreeNodeViewModel> nodes)
+                {
+                    foreach (var node in nodes)
+                    {
+                        node.IsSelected = (node.Id == boneId);
+                        Walk(node.Children);
+                    }
+                }
+                Walk(RootNodes);
+                RaiseCommandStates();
+            }
+        }
+
+        void SelectAndAddImages()
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = "パーツ画像の選択（複数可）",
+                Filter = "画像ファイル (*.png;*.jpg;*.jpeg;*.bmp;*.webp;*.svg)|*.png;*.jpg;*.jpeg;*.bmp;*.webp;*.svg|すべてのファイル (*.*)|*.*",
+                Multiselect = true,
+            };
+
+            if (dialog.ShowDialog() == true && dialog.FileNames.Length > 0)
+            {
+                AddBonesFromFiles(dialog.FileNames);
+            }
+        }
+
+        /// <summary>
+        /// 画像ファイル一覧からボーンを一括生成して追加する。
+        /// </summary>
+        public void AddBonesFromFiles(IEnumerable<string> filePaths)
+        {
+            var validFiles = filePaths
+                .Where(f => !string.IsNullOrWhiteSpace(f) && System.IO.File.Exists(f))
+                .ToList();
+
+            if (validFiles.Count == 0)
+                return;
+
+            BeginEdit?.Invoke(this, EventArgs.Empty);
+
+            var updated = Bones.Select(b => new BoneItem(b)).ToList();
+            var baseOrder = updated.Count == 0 ? 0 : updated.Max(b => b.BaseZOrder) + 1;
+            var parentId = SelectedBone?.Id ?? string.Empty;
+
+            BoneItem? lastAdded = null;
+            foreach (var file in validFiles)
+            {
+                var fileName = System.IO.Path.GetFileNameWithoutExtension(file);
+                var newBone = new BoneItem(fileName, parentId)
+                {
+                    BaseZOrder = baseOrder++,
+                    ImageSlots = [new BoneImageSlot(fileName, file)],
+                };
+                updated.Add(newBone);
+                lastAdded = newBone;
+            }
+
+            Commit(updated);
+            EndEdit?.Invoke(this, EventArgs.Empty);
+
+            if (lastAdded != null)
+                SelectedBone = Bones.FirstOrDefault(b => b.Id == lastAdded.Id);
         }
 
         /// <summary>プロパティから現在の値を読み直し、ツリーを再構築する。</summary>

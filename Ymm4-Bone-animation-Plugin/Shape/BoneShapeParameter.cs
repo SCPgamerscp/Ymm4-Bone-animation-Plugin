@@ -21,12 +21,18 @@ namespace Ymm4BoneAnimationPlugin.Shape
     internal class BoneShapeParameter(SharedDataStore? sharedData) : ShapeParameterBase(sharedData)
     {
         /// <summary>
+        /// 現在選択されているボーンのID（プレビューとツリーの双方向連動用）。
+        /// </summary>
+        public string? SelectedBoneId { get => selectedBoneId; set => Set(ref selectedBoneId, value); }
+        string? selectedBoneId;
+
+        /// <summary>
         /// ボーン一覧。TreeViewエディタから階層編集される。
         /// </summary>
         [Display(GroupName = "ボーン階層", Name = "", Description = "ドラッグ＆ドロップで親子関係を変更できます")]
         [BoneTreeEditor(PropertyEditorSize = PropertyEditorSize.FullWidth)]
         public ImmutableList<BoneItem> Bones { get => bones; set => Set(ref bones, value); }
-        ImmutableList<BoneItem> bones = CreateDefaultSkeleton();
+        ImmutableList<BoneItem> bones = [];
 
         [Display(GroupName = "全体設定", Name = "物理演算を有効化", Description = "揺れもの設定を持つボーンの物理演算を実行します")]
         [ToggleSlider]
@@ -46,11 +52,11 @@ namespace Ymm4BoneAnimationPlugin.Shape
         int blinkSeed = 1234;
 
         // 図形の描画内容はプレビューと出力で共通のため、ガイドは出力にも含まれる。
-        // 出力前にオフにする必要がある旨をDescriptionで明示する。
-        [Display(GroupName = "全体設定", Name = "ボーンを表示", Description = "ボーンのガイド線を描画します。動画出力にも含まれるため、書き出す前にオフにしてください")]
+        [Display(GroupName = "全体設定", Name = "ボーンを表示 (プレビュー線)", Description = "メイン画面上にボーンのガイド線を描画します。動画出力にも含まれるため書き出し時はオフを推奨します")]
         [ToggleSlider]
+        [DefaultValue(false)]
         public bool ShowBoneGuide { get => showBoneGuide; set => Set(ref showBoneGuide, value); }
-        bool showBoneGuide = true;
+        bool showBoneGuide = false;
 
         [Display(GroupName = "テンプレート", Name = "", Description = "ボーン構造をJSONファイルとして保存・読み込みします")]
         [TemplateIoEditor(PropertyEditorSize = PropertyEditorSize.FullWidth)]
@@ -62,14 +68,8 @@ namespace Ymm4BoneAnimationPlugin.Shape
         {
         }
 
-        /// <summary>既定のボーン構成（体 → 頭 → 髪）を作る。</summary>
-        static ImmutableList<BoneItem> CreateDefaultSkeleton()
-        {
-            var body = new BoneItem("体") { Length = 120, BaseZOrder = 0 };
-            var head = new BoneItem("頭", body.Id) { Length = 80, BaseZOrder = 10 };
-            head.Rotation.Values[0].Value = -90;
-            return [body, head];
-        }
+        /// <summary>既定のボーン構成を作る（初期状態は空）。</summary>
+        static ImmutableList<BoneItem> CreateDefaultSkeleton() => [];
 
         /// <summary>
         /// Core層の <see cref="Skeleton"/> を構築する。
@@ -127,6 +127,7 @@ namespace Ymm4BoneAnimationPlugin.Shape
         {
             // Animationは参照をそのまま持たず、必ずコピーを保持する。
             public ImmutableList<BoneItem> Bones { get; } = [.. parameter.Bones.Select(b => new BoneItem(b))];
+            public string? SelectedBoneId { get; } = parameter.SelectedBoneId;
             public bool IsPhysicsEnabled { get; } = parameter.IsPhysicsEnabled;
             public bool IsBlinkEnabled { get; } = parameter.IsBlinkEnabled;
             public int BlinkSeed { get; } = parameter.BlinkSeed;
@@ -135,6 +136,7 @@ namespace Ymm4BoneAnimationPlugin.Shape
             public void CopyTo(BoneShapeParameter parameter)
             {
                 parameter.Bones = [.. Bones.Select(b => new BoneItem(b))];
+                parameter.SelectedBoneId = SelectedBoneId;
                 parameter.IsPhysicsEnabled = IsPhysicsEnabled;
                 parameter.IsBlinkEnabled = IsBlinkEnabled;
                 parameter.BlinkSeed = BlinkSeed;
