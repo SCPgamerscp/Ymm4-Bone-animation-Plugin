@@ -153,15 +153,37 @@ namespace Ymm4BoneAnimationPlugin.Views
                     {
                         Canvas.SetLeft(container, layer.X - layer.Width / 2.0);
                         Canvas.SetTop(container, layer.Y - layer.Height / 2.0);
+                        Canvas.SetZIndex(container, layer.ZOrder);
                     }
 
                     layer.PropertyChanged += (s, e) =>
                     {
                         if (e.PropertyName == nameof(PuppetImageLayerViewModel.IsSelected))
                             selectionBorder.Visibility = layer.IsSelected ? Visibility.Visible : Visibility.Collapsed;
-                        else if (e.PropertyName is nameof(PuppetImageLayerViewModel.X) or nameof(PuppetImageLayerViewModel.Y))
+                        else if (e.PropertyName is nameof(PuppetImageLayerViewModel.X) or nameof(PuppetImageLayerViewModel.Y) or nameof(PuppetImageLayerViewModel.ZOrder))
                             UpdateLayerPos();
                     };
+
+                    // 右クリックメニュー（重なり順・削除）
+                    var contextMenu = new ContextMenu();
+                    var mFront = new MenuItem { Header = "⏫ 最前面へ" };
+                    mFront.Click += (_, _) => { viewModel.SelectedLayer = layer; viewModel.BringSelectedLayerToFront(); };
+                    var mForward = new MenuItem { Header = "▲ 前面へ" };
+                    mForward.Click += (_, _) => { viewModel.SelectedLayer = layer; viewModel.ChangeSelectedLayerZOrder(1); };
+                    var mBackward = new MenuItem { Header = "▼ 背面へ" };
+                    mBackward.Click += (_, _) => { viewModel.SelectedLayer = layer; viewModel.ChangeSelectedLayerZOrder(-1); };
+                    var mBack = new MenuItem { Header = "⏬ 最背面へ" };
+                    mBack.Click += (_, _) => { viewModel.SelectedLayer = layer; viewModel.SendSelectedLayerToBack(); };
+                    var mDelete = new MenuItem { Header = "🗑 パーツ削除" };
+                    mDelete.Click += (_, _) => { viewModel.SelectedLayer = layer; viewModel.DeleteSelectedLayer(); };
+
+                    contextMenu.Items.Add(mFront);
+                    contextMenu.Items.Add(mForward);
+                    contextMenu.Items.Add(mBackward);
+                    contextMenu.Items.Add(mBack);
+                    contextMenu.Items.Add(new Separator());
+                    contextMenu.Items.Add(mDelete);
+                    container.ContextMenu = contextMenu;
 
                     container.Children.Add(image);
                     container.Children.Add(selectionBorder);
@@ -170,7 +192,11 @@ namespace Ymm4BoneAnimationPlugin.Views
                     // レイヤーのマウスイベント（選択＆ドラッグ移動）
                     container.MouseDown += (s, e) =>
                     {
-                        if (e.ChangedButton == MouseButton.Left)
+                        if (e.ChangedButton == MouseButton.Right)
+                        {
+                            viewModel.SelectedLayer = layer;
+                        }
+                        else if (e.ChangedButton == MouseButton.Left)
                         {
                             if (viewModel.IsAddPinMode)
                             {

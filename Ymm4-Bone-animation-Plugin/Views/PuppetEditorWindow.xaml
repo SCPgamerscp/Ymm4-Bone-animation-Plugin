@@ -193,6 +193,32 @@
                             </StackPanel>
                         </GroupBox>
 
+                        <!-- レイヤー一覧（重なり順） -->
+                        <GroupBox Header="📚 パーツレイヤー一覧 (重なり順)" Foreground="#CCCCCC" BorderBrush="#3F3F46" Margin="0,0,0,12" Padding="8">
+                            <StackPanel>
+                                <WrapPanel Margin="0,0,0,6">
+                                    <Button Content="⏫ 最前面" Command="{Binding BringLayerToFrontCommand}" Padding="5,2" Margin="0,0,3,0" ToolTip="一番手前に表示"/>
+                                    <Button Content="▲ 前面へ" Command="{Binding BringLayerForwardCommand}" Padding="5,2" Margin="0,0,3,0" ToolTip="1つ手前に移動"/>
+                                    <Button Content="▼ 背面へ" Command="{Binding SendLayerBackwardCommand}" Padding="5,2" Margin="0,0,3,0" ToolTip="1つ奥に移動"/>
+                                    <Button Content="⏬ 最背面" Command="{Binding SendLayerToBackCommand}" Padding="5,2" Margin="0,0,3,0" ToolTip="一番奥に表示"/>
+                                    <Button Content="🗑 削除" Command="{Binding DeleteLayerCommand}" Padding="5,2" ToolTip="パーツを削除"/>
+                                </WrapPanel>
+                                <Border BorderBrush="#3F3F46" BorderThickness="1" Background="#1E1E1E" Height="110">
+                                    <ListBox ItemsSource="{Binding ImageLayers}" SelectedItem="{Binding SelectedLayer, Mode=TwoWay}"
+                                             Background="Transparent" BorderThickness="0" Foreground="#EEEEEE">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal" Margin="2">
+                                                    <TextBlock Text="🖼 " Foreground="#888888"/>
+                                                    <TextBlock Text="{Binding FileName}" FontWeight="SemiBold"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </Border>
+                            </StackPanel>
+                        </GroupBox>
+
                         <!-- 画像パーツ設定 -->
                         <GroupBox Header="🖼 選択中画像パーツの設定" Foreground="#CCCCCC" BorderBrush="#3F3F46" Margin="0,0,0,12" Padding="8">
                             <StackPanel IsEnabled="{Binding SelectedLayer, Converter={x:Static local:PuppetEditorWindow.NotNullConverter}}">
@@ -216,11 +242,13 @@
                                 </Grid>
 
                                 <TextBlock Text="前後関係 (重なり順)" Foreground="#AAAAAA" Margin="0,6,0,2"/>
-                                <StackPanel Orientation="Horizontal" Margin="0,2,0,4">
-                                    <Button Content="▲ 前面へ" Command="{Binding BringLayerForwardCommand}" Padding="6,2"/>
-                                    <Button Content="▼ 背面へ" Command="{Binding SendLayerBackwardCommand}" Padding="6,2"/>
-                                    <Button Content="🗑 パーツ削除" Command="{Binding DeleteLayerCommand}" Padding="6,2" Margin="8,2,2,2"/>
-                                </StackPanel>
+                                <WrapPanel Margin="0,2,0,4">
+                                    <Button Content="⏫ 最前面" Command="{Binding BringLayerToFrontCommand}" Padding="5,2" Margin="0,0,3,2"/>
+                                    <Button Content="▲ 前面へ" Command="{Binding BringLayerForwardCommand}" Padding="5,2" Margin="0,0,3,2"/>
+                                    <Button Content="▼ 背面へ" Command="{Binding SendLayerBackwardCommand}" Padding="5,2" Margin="0,0,3,2"/>
+                                    <Button Content="⏬ 最背面" Command="{Binding SendLayerToBackCommand}" Padding="5,2" Margin="0,0,3,2"/>
+                                    <Button Content="🗑 削除" Command="{Binding DeleteLayerCommand}" Padding="5,2" Margin="0,0,0,2"/>
+                                </WrapPanel>
                             </StackPanel>
                         </GroupBox>
 

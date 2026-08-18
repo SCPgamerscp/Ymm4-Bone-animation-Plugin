@@ -268,8 +268,10 @@ namespace Ymm4BoneAnimationPlugin.Views
         public ActionCommand AddImagesCommand { get; }
         public ActionCommand UndoCommand { get; }
         public ActionCommand RedoCommand { get; }
+        public ActionCommand BringLayerToFrontCommand { get; }
         public ActionCommand BringLayerForwardCommand { get; }
         public ActionCommand SendLayerBackwardCommand { get; }
+        public ActionCommand SendLayerToBackCommand { get; }
         public ActionCommand DeleteLayerCommand { get; }
 
         public PuppetEditorViewModel(ImmutableList<BoneItem> existingBones)
@@ -283,8 +285,10 @@ namespace Ymm4BoneAnimationPlugin.Views
             AddImagesCommand = new ActionCommand(_ => true, _ => SelectImages());
             UndoCommand = new ActionCommand(_ => undoStack.Count > 0, _ => Undo());
             RedoCommand = new ActionCommand(_ => redoStack.Count > 0, _ => Redo());
+            BringLayerToFrontCommand = new ActionCommand(_ => SelectedLayer != null, _ => BringSelectedLayerToFront());
             BringLayerForwardCommand = new ActionCommand(_ => SelectedLayer != null, _ => ChangeSelectedLayerZOrder(1));
             SendLayerBackwardCommand = new ActionCommand(_ => SelectedLayer != null, _ => ChangeSelectedLayerZOrder(-1));
+            SendLayerToBackCommand = new ActionCommand(_ => SelectedLayer != null, _ => SendSelectedLayerToBack());
             DeleteLayerCommand = new ActionCommand(_ => SelectedLayer != null, _ => DeleteSelectedLayer());
 
             ImportExistingBones(existingBones);
@@ -296,8 +300,10 @@ namespace Ymm4BoneAnimationPlugin.Views
             ClearAllCommand.RaiseCanExecuteChanged();
             UndoCommand.RaiseCanExecuteChanged();
             RedoCommand.RaiseCanExecuteChanged();
+            BringLayerToFrontCommand.RaiseCanExecuteChanged();
             BringLayerForwardCommand.RaiseCanExecuteChanged();
             SendLayerBackwardCommand.RaiseCanExecuteChanged();
+            SendLayerToBackCommand.RaiseCanExecuteChanged();
             DeleteLayerCommand.RaiseCanExecuteChanged();
         }
 
@@ -604,14 +610,57 @@ namespace Ymm4BoneAnimationPlugin.Views
             SelectedLayer = null;
         }
 
-        public void ChangeSelectedLayerZOrder(int delta)
+        public void BringSelectedLayerToFront()
         {
-            if (SelectedLayer == null)
+            if (SelectedLayer == null || ImageLayers.Count <= 1)
                 return;
 
             PushSnapshot();
-            SelectedLayer.ZOrder += delta;
+            var maxZ = ImageLayers.Max(l => l.ZOrder);
+            SelectedLayer.ZOrder = maxZ + 1;
+            NormalizeZOrders();
             RaiseCommandStates();
+        }
+
+        public void SendSelectedLayerToBack()
+        {
+            if (SelectedLayer == null || ImageLayers.Count <= 1)
+                return;
+
+            PushSnapshot();
+            var minZ = ImageLayers.Min(l => l.ZOrder);
+            SelectedLayer.ZOrder = minZ - 1;
+            NormalizeZOrders();
+            RaiseCommandStates();
+        }
+
+        public void ChangeSelectedLayerZOrder(int delta)
+        {
+            if (SelectedLayer == null || ImageLayers.Count <= 1)
+                return;
+
+            var sorted = ImageLayers.OrderBy(l => l.ZOrder).ToList();
+            var index = sorted.IndexOf(SelectedLayer);
+            var targetIndex = Math.Clamp(index + delta, 0, sorted.Count - 1);
+            if (index == targetIndex)
+                return;
+
+            PushSnapshot();
+            var other = sorted[targetIndex];
+            var temp = SelectedLayer.ZOrder;
+            SelectedLayer.ZOrder = other.ZOrder;
+            other.ZOrder = temp;
+            NormalizeZOrders();
+            RaiseCommandStates();
+        }
+
+        void NormalizeZOrders()
+        {
+            var sorted = ImageLayers.OrderBy(l => l.ZOrder).ToList();
+            for (int i = 0; i < sorted.Count; i++)
+            {
+                sorted[i].ZOrder = i;
+            }
         }
 
         public void ClearAll()
