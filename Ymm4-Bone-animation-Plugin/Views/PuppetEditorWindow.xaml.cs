@@ -145,15 +145,6 @@ namespace Ymm4BoneAnimationPlugin.Views
                         IsHitTestVisible = false,
                     };
 
-                    var selectionBorder = new Rectangle
-                    {
-                        Stroke = new SolidColorBrush(Color.FromArgb(240, 255, 119, 0)),
-                        StrokeThickness = 3.0,
-                        StrokeDashArray = new DoubleCollection { 4, 2 },
-                        Visibility = layer.IsHighlighted ? Visibility.Visible : Visibility.Collapsed,
-                        IsHitTestVisible = false,
-                    };
-
                     void UpdateLayerPos()
                     {
                         Canvas.SetLeft(container, layer.X - layer.Width / 2.0);
@@ -163,9 +154,7 @@ namespace Ymm4BoneAnimationPlugin.Views
 
                     layer.PropertyChanged += (s, e) =>
                     {
-                        if (e.PropertyName is nameof(PuppetImageLayerViewModel.IsSelected) or nameof(PuppetImageLayerViewModel.IsHighlighted))
-                            selectionBorder.Visibility = layer.IsHighlighted ? Visibility.Visible : Visibility.Collapsed;
-                        else if (e.PropertyName is nameof(PuppetImageLayerViewModel.X) or nameof(PuppetImageLayerViewModel.Y) or nameof(PuppetImageLayerViewModel.ZOrder))
+                        if (e.PropertyName is nameof(PuppetImageLayerViewModel.X) or nameof(PuppetImageLayerViewModel.Y) or nameof(PuppetImageLayerViewModel.ZOrder))
                             UpdateLayerPos();
                     };
 
@@ -191,7 +180,6 @@ namespace Ymm4BoneAnimationPlugin.Views
                     container.ContextMenu = contextMenu;
 
                     container.Children.Add(image);
-                    container.Children.Add(selectionBorder);
                     UpdateLayerPos();
 
                     // レイヤーのマウスイベント（選択＆ドラッグ移動）

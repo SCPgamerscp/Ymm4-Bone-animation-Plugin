@@ -205,34 +205,49 @@
                                     <Button Content="⏬ 最背面" Command="{Binding SendLayerToBackCommand}" Padding="5,2" Margin="0,0,3,0" ToolTip="一番奥に表示"/>
                                     <Button Content="🗑 削除" Command="{Binding DeleteLayerCommand}" Padding="5,2" ToolTip="パーツを削除"/>
                                 </WrapPanel>
-                                <Border BorderBrush="#3F3F46" BorderThickness="1" Background="#1E1E1E" Height="140">
+                                <Border BorderBrush="#3F3F46" BorderThickness="1" Background="#1E1E1E" Height="150">
                                     <ListBox ItemsSource="{Binding ImageLayers}" SelectedItem="{Binding SelectedLayer, Mode=TwoWay}"
                                              Background="Transparent" BorderThickness="0" Foreground="#EEEEEE">
                                         <ListBox.ItemTemplate>
                                             <DataTemplate>
-                                                <Grid Margin="2,3" VerticalAlignment="Center">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="36"/>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                    </Grid.ColumnDefinitions>
+                                                <Border x:Name="ItemBorder" CornerRadius="4" Padding="4,3" Margin="1,2" BorderThickness="1.5"
+                                                        BorderBrush="Transparent" Background="#252528">
+                                                    <Grid VerticalAlignment="Center">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="36"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
 
-                                                    <!-- サムネイルプレビュー -->
-                                                    <Border Grid.Column="0" Width="32" Height="32" Background="#2A2A2D" BorderBrush="#4A4A4D" BorderThickness="1" CornerRadius="2">
-                                                        <Image Source="{Binding Thumbnail}" Stretch="Uniform" Margin="1"/>
-                                                    </Border>
+                                                        <!-- サムネイルプレビュー -->
+                                                        <Border Grid.Column="0" Width="32" Height="32" Background="#18181A" BorderBrush="#4A4A4D" BorderThickness="1" CornerRadius="2">
+                                                            <Image Source="{Binding Thumbnail}" Stretch="Uniform" Margin="1"/>
+                                                        </Border>
 
-                                                    <!-- ファイル名とサイズ -->
-                                                    <StackPanel Grid.Column="1" Margin="6,0,0,0" VerticalAlignment="Center">
-                                                        <TextBlock Text="{Binding FileName}" FontWeight="Bold" FontSize="11" TextTrimming="CharacterEllipsis"/>
-                                                        <TextBlock Text="{Binding ZOrder, StringFormat='Z順: {0}'}" Foreground="#888888" FontSize="10"/>
-                                                    </StackPanel>
+                                                        <!-- ファイル名とサイズ -->
+                                                        <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center">
+                                                            <TextBlock x:Name="FileNameText" Text="{Binding FileName}" FontWeight="Bold" FontSize="11" TextTrimming="CharacterEllipsis" Foreground="#EEEEEE"/>
+                                                            <TextBlock Text="{Binding ZOrder, StringFormat='Z順: {0}'}" Foreground="#888888" FontSize="10"/>
+                                                        </StackPanel>
 
-                                                    <!-- 割り当てピン情報バッジ -->
-                                                    <Border Grid.Column="2" Background="#2A3540" BorderBrush="#3584E4" BorderThickness="1" CornerRadius="3" Padding="5,2" Margin="4,0,0,0" VerticalAlignment="Center">
-                                                        <TextBlock Text="{Binding AssignedPinName}" Foreground="#78AEED" FontSize="10" FontWeight="SemiBold"/>
-                                                    </Border>
-                                                </Grid>
+                                                        <!-- 割り当てピン情報バッジ -->
+                                                        <Border x:Name="PinBadge" Grid.Column="2" Background="#2A3540" BorderBrush="#3584E4" BorderThickness="1" CornerRadius="3" Padding="5,2" Margin="4,0,0,0" VerticalAlignment="Center">
+                                                            <TextBlock x:Name="PinBadgeText" Text="{Binding AssignedPinName}" Foreground="#78AEED" FontSize="10" FontWeight="Bold"/>
+                                                        </Border>
+                                                    </Grid>
+                                                </Border>
+
+                                                <DataTemplate.Triggers>
+                                                    <!-- ピン選択時またはパーツ選択時にピカッとオレンジ色に発光！ -->
+                                                    <DataTrigger Binding="{Binding IsHighlighted}" Value="True">
+                                                        <Setter TargetName="ItemBorder" Property="Background" Value="#4D2800"/>
+                                                        <Setter TargetName="ItemBorder" Property="BorderBrush" Value="#FF8800"/>
+                                                        <Setter TargetName="FileNameText" Property="Foreground" Value="#FFAA33"/>
+                                                        <Setter TargetName="PinBadge" Property="Background" Value="#803300"/>
+                                                        <Setter TargetName="PinBadge" Property="BorderBrush" Value="#FFAA00"/>
+                                                        <Setter TargetName="PinBadgeText" Property="Foreground" Value="#FFDD66"/>
+                                                    </DataTrigger>
+                                                </DataTemplate.Triggers>
                                             </DataTemplate>
                                         </ListBox.ItemTemplate>
                                     </ListBox>
