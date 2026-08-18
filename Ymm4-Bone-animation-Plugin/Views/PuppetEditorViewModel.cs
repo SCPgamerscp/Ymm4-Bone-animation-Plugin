@@ -235,10 +235,25 @@ namespace Ymm4BoneAnimationPlugin.Views
                     selectedLayer.IsSelected = true;
                 }
                 UpdateAvailableParents();
+                OnPropertyChanged(nameof(CurrentParentId));
                 RaiseCommandStates();
             }
         }
         PuppetImageLayerViewModel? selectedLayer;
+
+        /// <summary>現在選択中パーツの親パーツID（ComboBoxと双方向連動）</summary>
+        public string? CurrentParentId
+        {
+            get => SelectedLayer?.ParentId;
+            set
+            {
+                if (SelectedLayer != null && SelectedLayer.ParentId != value)
+                {
+                    SetLayerParent(SelectedLayer, value);
+                    OnPropertyChanged(nameof(CurrentParentId));
+                }
+            }
+        }
 
         /// <summary>現在選択中のパーツが親として選択可能なパーツ一覧（自身や循環参照を除く）</summary>
         public ObservableCollection<ParentOption> AvailableParents { get; } = new();
@@ -558,6 +573,7 @@ namespace Ymm4BoneAnimationPlugin.Views
                 }
             }
             UpdateAvailableParents();
+            OnPropertyChanged(nameof(CurrentParentId));
         }
 
         public void UpdateAvailableParents()

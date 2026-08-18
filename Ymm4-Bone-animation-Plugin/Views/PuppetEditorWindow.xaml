@@ -187,7 +187,7 @@
 
                                 <TextBlock Text="🔗 結合する親パーツを選択" Foreground="#AAAAAA" Margin="0,6,0,2"/>
                                 <ComboBox ItemsSource="{Binding AvailableParents}"
-                                          SelectedValue="{Binding SelectedLayer.ParentId, Mode=TwoWay}"
+                                          SelectedValue="{Binding CurrentParentId, Mode=TwoWay}"
                                           SelectedValuePath="Id"
                                           DisplayMemberPath="Name"
                                           Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="4"/>
