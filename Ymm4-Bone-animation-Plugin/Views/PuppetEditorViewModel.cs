@@ -517,9 +517,10 @@ namespace Ymm4BoneAnimationPlugin.Views
 
             foreach (var layer in ImageLayers)
             {
-                var worldPos = GetWorldJoint(layer.Id, new HashSet<string>());
-                layer.X = Math.Round(worldPos.X, 1);
-                layer.Y = Math.Round(worldPos.Y, 1);
+                var worldJointPos = GetWorldJoint(layer.Id, new HashSet<string>());
+                // 関節ピン位置（worldJointPos）から画像の中心位置（layer.X, layer.Y）を正確に逆算
+                layer.X = Math.Round(worldJointPos.X - (layer.AnchorX - 0.5) * layer.Width, 1);
+                layer.Y = Math.Round(worldJointPos.Y - (layer.AnchorY - 0.5) * layer.Height, 1);
             }
 
             RebuildBoneConnections();
