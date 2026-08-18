@@ -8,51 +8,68 @@
              mc:Ignorable="d"
              d:DesignHeight="600" d:DesignWidth="320"
              d:DataContext="{d:DesignInstance Type={x:Type local:BoneTreeEditorViewModel}}">
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="220"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </UserControl.Resources>
 
-        <!-- 操作ツールバー -->
-        <Grid Grid.Row="0" Margin="0,0,0,6">
-            <!-- パペットボーンエディタ起動ボタン（メイン） -->
-            <Button Content="🛠 ボーンエディタを開く (パペット変形)" Command="{Binding OpenPuppetEditorCommand}"
-                    Background="#0E639C" Foreground="#FFFFFF" BorderBrush="#1177BB" FontWeight="Bold" Padding="10,8"
-                    ToolTip="独立した専用エディタを開き、画像パーツの配置、ピン打ち、ボーン接続を行います"/>
-        </Grid>
+    <StackPanel>
+        <!-- パペットボーンエディタ起動ボタン（メイン） -->
+        <Button Content="🛠 ボーンエディタを開く (パペット変形)" Command="{Binding OpenPuppetEditorCommand}"
+                Background="#0E639C" Foreground="#FFFFFF" BorderBrush="#1177BB" FontWeight="Bold" Padding="12,10" Margin="0,0,0,8"
+                ToolTip="独立した専用エディタを開き、画像パーツの配置、ピン打ち、ボーン接続、口パク設定を行います"/>
 
-        <!-- ボーン階層ツリー（ドラッグ＆ドロップで親子関係を変更） -->
-        <Border Grid.Row="1" BorderBrush="#40808080" BorderThickness="1">
-            <TreeView x:Name="tree"
-                      ItemsSource="{Binding RootNodes}"
-                      AllowDrop="True"
-                      SelectedItemChanged="Tree_SelectedItemChanged"
-                      PreviewMouseLeftButtonDown="Tree_PreviewMouseLeftButtonDown"
-                      PreviewMouseMove="Tree_PreviewMouseMove"
-                      DragOver="Tree_DragOver"
-                      Drop="Tree_Drop"
-                      Background="Transparent"
-                      BorderThickness="0">
-                <TreeView.ItemContainerStyle>
-                    <Style TargetType="TreeViewItem">
-                        <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
-                        <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}"/>
-                    </Style>
-                </TreeView.ItemContainerStyle>
-                <TreeView.ItemTemplate>
-                    <HierarchicalDataTemplate ItemsSource="{Binding Children}">
-                        <TextBlock Text="{Binding DisplayName}" Padding="2,1"/>
-                    </HierarchicalDataTemplate>
-                </TreeView.ItemTemplate>
-            </TreeView>
+        <!-- ボーンが0件のときのガイド表示 -->
+        <Border BorderBrush="#3F3F46" BorderThickness="1" Background="#202020" Padding="12" Margin="0,0,0,8">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding HasBones}" Value="False">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <StackPanel>
+                <TextBlock Text="💡 ボーンが未作成です" FontWeight="Bold" Foreground="#007ACC" Margin="0,0,0,4"/>
+                <TextBlock Text="上の [🛠 ボーンエディタを開く] をクリックして、画像パーツを配置し、関節ピンを打ってボーンを作成してください。"
+                           Foreground="#AAAAAA" TextWrapping="Wrap" LineHeight="16" FontSize="11"/>
+            </StackPanel>
         </Border>
 
-        <!-- 選択中ボーンのプロパティ -->
-        <c:PropertiesEditor Grid.Row="2"
-                            Target="{Binding SelectedBone}"
-                            BeginEdit="PropertiesEditor_BeginEdit"
-                            EndEdit="PropertiesEditor_EndEdit"/>
-    </Grid>
+        <!-- ボーンが存在するときのツリー＆プロパティ表示 -->
+        <StackPanel Visibility="{Binding HasBones, Converter={StaticResource BoolToVis}}">
+            <TextBlock Text="▼ 作成済みボーン一覧（選択して設定）" Foreground="#AAAAAA" FontSize="11" Margin="0,0,0,4"/>
+            <!-- ボーン階層ツリー -->
+            <Border BorderBrush="#40808080" BorderThickness="1" Height="160" Margin="0,0,0,8">
+                <TreeView x:Name="tree"
+                          ItemsSource="{Binding RootNodes}"
+                          AllowDrop="True"
+                          SelectedItemChanged="Tree_SelectedItemChanged"
+                          PreviewMouseLeftButtonDown="Tree_PreviewMouseLeftButtonDown"
+                          PreviewMouseMove="Tree_PreviewMouseMove"
+                          DragOver="Tree_DragOver"
+                          Drop="Tree_Drop"
+                          Background="Transparent"
+                          BorderThickness="0">
+                    <TreeView.ItemContainerStyle>
+                        <Style TargetType="TreeViewItem">
+                            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+                            <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}"/>
+                        </Style>
+                    </TreeView.ItemContainerStyle>
+                    <TreeView.ItemTemplate>
+                        <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                            <TextBlock Text="{Binding DisplayName}" Padding="2,1"/>
+                        </HierarchicalDataTemplate>
+                    </TreeView.ItemTemplate>
+                </TreeView>
+            </Border>
+
+            <!-- 選択中ボーンのプロパティ（位置・回転・差分画像・口パク・目パチ・IK・物理演算） -->
+            <c:PropertiesEditor Target="{Binding SelectedBone}"
+                                BeginEdit="PropertiesEditor_BeginEdit"
+                                EndEdit="PropertiesEditor_EndEdit"/>
+        </StackPanel>
+    </StackPanel>
 </UserControl>

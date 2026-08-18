@@ -53,6 +53,29 @@ namespace Ymm4BoneAnimationPlugin.Views
         public int ZOrder { get => zOrder; set => Set(ref zOrder, value); }
         int zOrder;
 
+        // --- 口パク・目パチ設定 ---
+        public bool IsLipSyncEnabled { get => isLipSyncEnabled; set => Set(ref isLipSyncEnabled, value); }
+        bool isLipSyncEnabled;
+
+        public string LipSyncSlotNames { get => lipSyncSlotNames; set => Set(ref lipSyncSlotNames, value); }
+        string lipSyncSlotNames = string.Empty;
+
+        public double LipSyncScaleInfluence { get => lipSyncScaleInfluence; set => Set(ref lipSyncScaleInfluence, value); }
+        double lipSyncScaleInfluence;
+
+        public bool IsBlinkEnabled { get => isBlinkEnabled; set => Set(ref isBlinkEnabled, value); }
+        bool isBlinkEnabled;
+
+        public string BlinkSlotNames { get => blinkSlotNames; set => Set(ref blinkSlotNames, value); }
+        string blinkSlotNames = string.Empty;
+
+        // --- IK・物理設定 ---
+        public bool IsIkEnabled { get => isIkEnabled; set => Set(ref isIkEnabled, value); }
+        bool isIkEnabled;
+
+        public bool IsPhysicsEnabled { get => isPhysicsEnabled; set => Set(ref isPhysicsEnabled, value); }
+        bool isPhysicsEnabled;
+
         public bool IsSelected { get => isSelected; set => Set(ref isSelected, value); }
         bool isSelected;
 
@@ -132,13 +155,31 @@ namespace Ymm4BoneAnimationPlugin.Views
     /// <summary>
     /// Undo / Redo 用のスナップショットデータ
     /// </summary>
-    internal record struct PinSnapshot(string Id, string Name, double X, double Y, string? ParentPinId, string? ImagePath, double AnchorX, double AnchorY, int ZOrder, BoneItem? OriginalBone);
+    internal record struct PinSnapshot(
+        string Id,
+        string Name,
+        double X,
+        double Y,
+        string? ParentPinId,
+        string? ImagePath,
+        double AnchorX,
+        double AnchorY,
+        int ZOrder,
+        bool IsLipSyncEnabled,
+        string LipSyncSlotNames,
+        double LipSyncScaleInfluence,
+        bool IsBlinkEnabled,
+        string BlinkSlotNames,
+        bool IsIkEnabled,
+        bool IsPhysicsEnabled,
+        BoneItem? OriginalBone);
+
     internal record struct LayerSnapshot(string Id, string FilePath, double X, double Y, double Width, double Height, int ZOrder);
     internal record struct EditorSnapshot(ImmutableList<PinSnapshot> Pins, ImmutableList<LayerSnapshot> Layers, string? SelectedPinId, string? SelectedLayerId);
 
     /// <summary>
     /// パペット変形方式のボーンエディタViewModel。
-    /// Undo/Redo、パーツ画像直接選択・配置、ピン・ボーン接続を完全サポート。
+    /// Undo/Redo、パーツ画像直接選択・配置、ピン・ボーン接続、口パク・目パチ設定を完全サポート。
     /// </summary>
     public class PuppetEditorViewModel : Bindable
     {
@@ -264,7 +305,25 @@ namespace Ymm4BoneAnimationPlugin.Views
 
         public void PushSnapshot()
         {
-            var pinList = Pins.Select(p => new PinSnapshot(p.Id, p.Name, p.X, p.Y, p.ParentPinId, p.ImagePath, p.AnchorX, p.AnchorY, p.ZOrder, p.OriginalBone)).ToImmutableList();
+            var pinList = Pins.Select(p => new PinSnapshot(
+                p.Id,
+                p.Name,
+                p.X,
+                p.Y,
+                p.ParentPinId,
+                p.ImagePath,
+                p.AnchorX,
+                p.AnchorY,
+                p.ZOrder,
+                p.IsLipSyncEnabled,
+                p.LipSyncSlotNames,
+                p.LipSyncScaleInfluence,
+                p.IsBlinkEnabled,
+                p.BlinkSlotNames,
+                p.IsIkEnabled,
+                p.IsPhysicsEnabled,
+                p.OriginalBone)).ToImmutableList();
+
             var layerList = ImageLayers.Select(l => new LayerSnapshot(l.Id, l.FilePath, l.X, l.Y, l.Width, l.Height, l.ZOrder)).ToImmutableList();
             undoStack.Push(new EditorSnapshot(pinList, layerList, SelectedPin?.Id, SelectedLayer?.Id));
             redoStack.Clear();
@@ -276,8 +335,25 @@ namespace Ymm4BoneAnimationPlugin.Views
             if (undoStack.Count == 0)
                 return;
 
-            // 現在の状態をRedoスタックへ保存
-            var pinList = Pins.Select(p => new PinSnapshot(p.Id, p.Name, p.X, p.Y, p.ParentPinId, p.ImagePath, p.AnchorX, p.AnchorY, p.ZOrder, p.OriginalBone)).ToImmutableList();
+            var pinList = Pins.Select(p => new PinSnapshot(
+                p.Id,
+                p.Name,
+                p.X,
+                p.Y,
+                p.ParentPinId,
+                p.ImagePath,
+                p.AnchorX,
+                p.AnchorY,
+                p.ZOrder,
+                p.IsLipSyncEnabled,
+                p.LipSyncSlotNames,
+                p.LipSyncScaleInfluence,
+                p.IsBlinkEnabled,
+                p.BlinkSlotNames,
+                p.IsIkEnabled,
+                p.IsPhysicsEnabled,
+                p.OriginalBone)).ToImmutableList();
+
             var layerList = ImageLayers.Select(l => new LayerSnapshot(l.Id, l.FilePath, l.X, l.Y, l.Width, l.Height, l.ZOrder)).ToImmutableList();
             redoStack.Push(new EditorSnapshot(pinList, layerList, SelectedPin?.Id, SelectedLayer?.Id));
 
@@ -291,8 +367,25 @@ namespace Ymm4BoneAnimationPlugin.Views
             if (redoStack.Count == 0)
                 return;
 
-            // 現在の状態をUndoスタックへ保存
-            var pinList = Pins.Select(p => new PinSnapshot(p.Id, p.Name, p.X, p.Y, p.ParentPinId, p.ImagePath, p.AnchorX, p.AnchorY, p.ZOrder, p.OriginalBone)).ToImmutableList();
+            var pinList = Pins.Select(p => new PinSnapshot(
+                p.Id,
+                p.Name,
+                p.X,
+                p.Y,
+                p.ParentPinId,
+                p.ImagePath,
+                p.AnchorX,
+                p.AnchorY,
+                p.ZOrder,
+                p.IsLipSyncEnabled,
+                p.LipSyncSlotNames,
+                p.LipSyncScaleInfluence,
+                p.IsBlinkEnabled,
+                p.BlinkSlotNames,
+                p.IsIkEnabled,
+                p.IsPhysicsEnabled,
+                p.OriginalBone)).ToImmutableList();
+
             var layerList = ImageLayers.Select(l => new LayerSnapshot(l.Id, l.FilePath, l.X, l.Y, l.Width, l.Height, l.ZOrder)).ToImmutableList();
             undoStack.Push(new EditorSnapshot(pinList, layerList, SelectedPin?.Id, SelectedLayer?.Id));
 
@@ -317,6 +410,13 @@ namespace Ymm4BoneAnimationPlugin.Views
                     AnchorX = p.AnchorX,
                     AnchorY = p.AnchorY,
                     ZOrder = p.ZOrder,
+                    IsLipSyncEnabled = p.IsLipSyncEnabled,
+                    LipSyncSlotNames = p.LipSyncSlotNames,
+                    LipSyncScaleInfluence = p.LipSyncScaleInfluence,
+                    IsBlinkEnabled = p.IsBlinkEnabled,
+                    BlinkSlotNames = p.BlinkSlotNames,
+                    IsIkEnabled = p.IsIkEnabled,
+                    IsPhysicsEnabled = p.IsPhysicsEnabled,
                     OriginalBone = p.OriginalBone,
                 });
             }
@@ -362,6 +462,13 @@ namespace Ymm4BoneAnimationPlugin.Views
                     AnchorX = bone.AnchorX,
                     AnchorY = bone.AnchorY,
                     ZOrder = bone.BaseZOrder,
+                    IsLipSyncEnabled = bone.IsLipSyncEnabled,
+                    LipSyncSlotNames = bone.LipSyncSlotNames,
+                    LipSyncScaleInfluence = bone.LipSyncScaleInfluence,
+                    IsBlinkEnabled = bone.IsBlinkEnabled,
+                    BlinkSlotNames = bone.BlinkSlotNames,
+                    IsIkEnabled = bone.IsIkEnabled,
+                    IsPhysicsEnabled = bone.IsPhysicsEnabled,
                     X = curX,
                     Y = curY,
                     OriginalBone = bone,
@@ -403,7 +510,6 @@ namespace Ymm4BoneAnimationPlugin.Views
                 newPin.ImagePath = hitLayer.FilePath;
                 newPin.ZOrder = hitLayer.ZOrder;
 
-                // レイヤー内での相対位置からアンカー(0.0〜1.0)を自動計算
                 var layerLeft = hitLayer.X - hitLayer.Width / 2.0;
                 var layerTop = hitLayer.Y - hitLayer.Height / 2.0;
                 if (hitLayer.Width > 0 && hitLayer.Height > 0)
@@ -413,7 +519,7 @@ namespace Ymm4BoneAnimationPlugin.Views
                 }
             }
 
-            // 直前に選択されていたピンがあれば、自動的にその子としてボーンを繋ぐ（パペットツール風の連続ピン打ち）
+            // 直前に選択されていたピンがあれば、自動的にその子としてボーンを繋ぐ
             if (SelectedPin != null)
             {
                 newPin.ParentPinId = SelectedPin.Id;
@@ -426,7 +532,6 @@ namespace Ymm4BoneAnimationPlugin.Views
 
         public PuppetImageLayerViewModel? FindLayerAt(double canvasX, double canvasY)
         {
-            // ZOrder順（手前の画像から順にヒット判定）
             return ImageLayers
                 .OrderByDescending(l => l.ZOrder)
                 .FirstOrDefault(l =>
@@ -443,12 +548,11 @@ namespace Ymm4BoneAnimationPlugin.Views
             if (parentPin == null || childPin == null || ReferenceEquals(parentPin, childPin))
                 return;
 
-            // 循環参照チェック
             var current = parentPin;
             while (current != null)
             {
                 if (current.Id == childPin.Id)
-                    return; // 循環するため拒否
+                    return;
                 current = Pins.FirstOrDefault(p => p.Id == current.ParentPinId);
             }
 
@@ -481,7 +585,6 @@ namespace Ymm4BoneAnimationPlugin.Views
             var removePin = SelectedPin;
             var parentId = removePin.ParentPinId;
 
-            // 子ピンの親を削除ピンの親に引き継ぐ
             foreach (var child in Pins.Where(p => p.ParentPinId == removePin.Id))
                 child.ParentPinId = parentId;
 
@@ -571,7 +674,6 @@ namespace Ymm4BoneAnimationPlugin.Views
             var result = new List<BoneItem>();
             var pinToBoneMap = new Dictionary<string, BoneItem>();
 
-            // 親を持たないピン（ルートピン）から順に階層を構築
             foreach (var pin in Pins)
             {
                 var bone = pin.OriginalBone != null
@@ -582,6 +684,13 @@ namespace Ymm4BoneAnimationPlugin.Views
                 bone.BaseZOrder = pin.ZOrder;
                 bone.AnchorX = (float)pin.AnchorX;
                 bone.AnchorY = (float)pin.AnchorY;
+                bone.IsLipSyncEnabled = pin.IsLipSyncEnabled;
+                bone.LipSyncSlotNames = pin.LipSyncSlotNames;
+                bone.LipSyncScaleInfluence = pin.LipSyncScaleInfluence;
+                bone.IsBlinkEnabled = pin.IsBlinkEnabled;
+                bone.BlinkSlotNames = pin.BlinkSlotNames;
+                bone.IsIkEnabled = pin.IsIkEnabled;
+                bone.IsPhysicsEnabled = pin.IsPhysicsEnabled;
 
                 // 画像が割り当てられている場合
                 if (!string.IsNullOrEmpty(pin.ImagePath))
@@ -594,7 +703,6 @@ namespace Ymm4BoneAnimationPlugin.Views
                 result.Add(bone);
             }
 
-            // 親子関係および長さ・オフセットの計算
             foreach (var pin in Pins)
             {
                 var bone = pinToBoneMap[pin.Id];
@@ -610,7 +718,6 @@ namespace Ymm4BoneAnimationPlugin.Views
                         var dy = pin.Y - parentPin.Y;
                         var dist = Math.Sqrt(dx * dx + dy * dy);
 
-                        // 親ボーンの長さを子ピンまでの距離に設定
                         if (dist > 5)
                             parentBone.Length = Math.Round(dist, 1);
                     }

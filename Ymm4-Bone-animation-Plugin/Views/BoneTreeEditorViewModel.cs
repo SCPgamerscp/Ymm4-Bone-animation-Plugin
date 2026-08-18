@@ -30,6 +30,8 @@ namespace Ymm4BoneAnimationPlugin.Views
         public List<BoneItem> Bones { get => bones; private set => Set(ref bones, value); }
         List<BoneItem> bones = new();
 
+        public bool HasBones => Bones.Count > 0;
+
         /// <summary>選択中のボーン。プロパティグリッドの編集対象になる。</summary>
         public BoneItem? SelectedBone
         {
@@ -129,6 +131,7 @@ namespace Ymm4BoneAnimationPlugin.Views
                 Bones = [.. values];
 
             RebuildTree();
+            OnPropertyChanged(nameof(HasBones));
             RaiseCommandStates();
         }
 

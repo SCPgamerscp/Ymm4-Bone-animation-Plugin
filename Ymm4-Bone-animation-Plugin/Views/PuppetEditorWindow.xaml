@@ -168,6 +168,28 @@
                                 <TextBlock Text="割り当て画像" Foreground="#AAAAAA" Margin="0,6,0,2"/>
                                 <TextBox Text="{Binding SelectedPin.ImagePath, Mode=OneWay}" Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="4" IsReadOnly="True"/>
                                 <Button Content="画像を選択..." Click="BrowsePinImage_Click" Margin="0,4,0,0" HorizontalAlignment="Right"/>
+
+                                <Separator Margin="0,10" Background="#3F3F46"/>
+
+                                <!-- 口パク・目パチ設定 -->
+                                <TextBlock Text="👄 口パク・目パチ設定" FontWeight="Bold" Foreground="#CCCCCC" Margin="0,2,0,4"/>
+                                <CheckBox Content="口パク連動" IsChecked="{Binding SelectedPin.IsLipSyncEnabled}" Foreground="#EEEEEE" Margin="0,2,0,4"/>
+                                <TextBlock Text="口パク差分名 (開,半開,閉)" Foreground="#AAAAAA" Margin="0,2,0,2"/>
+                                <TextBox Text="{Binding SelectedPin.LipSyncSlotNames, UpdateSourceTrigger=PropertyChanged}" Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="4"/>
+
+                                <TextBlock Text="口パク縦伸縮 (0~1)" Foreground="#AAAAAA" Margin="0,4,0,2"/>
+                                <TextBox Text="{Binding SelectedPin.LipSyncScaleInfluence, UpdateSourceTrigger=PropertyChanged}" Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="4"/>
+
+                                <CheckBox Content="目パチ連動" IsChecked="{Binding SelectedPin.IsBlinkEnabled}" Foreground="#EEEEEE" Margin="0,8,0,4"/>
+                                <TextBlock Text="目パチ差分名 (開,半開,閉)" Foreground="#AAAAAA" Margin="0,2,0,2"/>
+                                <TextBox Text="{Binding SelectedPin.BlinkSlotNames, UpdateSourceTrigger=PropertyChanged}" Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="4"/>
+
+                                <Separator Margin="0,10" Background="#3F3F46"/>
+
+                                <!-- IK・物理設定 -->
+                                <TextBlock Text="🦴 IK・物理演算" FontWeight="Bold" Foreground="#CCCCCC" Margin="0,2,0,4"/>
+                                <CheckBox Content="IKを使用 (手足の先端)" IsChecked="{Binding SelectedPin.IsIkEnabled}" Foreground="#EEEEEE" Margin="0,2,0,4"/>
+                                <CheckBox Content="揺れものにする (物理演算)" IsChecked="{Binding SelectedPin.IsPhysicsEnabled}" Foreground="#EEEEEE" Margin="0,2,0,4"/>
                             </StackPanel>
                         </GroupBox>
 

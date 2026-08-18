@@ -60,7 +60,7 @@
 
 	<!--ビルド後にYMM4のプラグインフォルダへdllをコピーする-->
 	<Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(YMM4DirPath)' != ''">
-		<Exec Command="mkdir &quot;$(YMM4DirPath)user\plugin\$(ProjectName)&quot; &gt; NUL 2&gt;&amp;1&#xD;&#xA;copy &quot;$(TargetPath)&quot; &quot;$(YMM4DirPath)user\plugin\$(ProjectName)\&quot;" />
+		<Exec Command="mkdir &quot;$(YMM4DirPath)user\plugin\$(ProjectName)&quot; &gt; NUL 2&gt;&amp;1&#xD;&#xA;copy &quot;$(TargetPath)&quot; &quot;$(YMM4DirPath)user\plugin\$(ProjectName)\&quot;" ContinueOnError="true" />
 	</Target>
 
 	<!-- .ymme 配布用パッケージを自動作成する -->
