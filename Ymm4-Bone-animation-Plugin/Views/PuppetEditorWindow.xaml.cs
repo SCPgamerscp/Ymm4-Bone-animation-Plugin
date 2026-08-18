@@ -195,28 +195,13 @@ namespace Ymm4BoneAnimationPlugin.Views
                         }
                         else if (e.ChangedButton == MouseButton.Left)
                         {
-                            if (viewModel.IsAddPinAndBoneMode)
-                            {
-                                // 関節ピン配置モード：クリック位置をこのパーツの関節位置に設定し、自動結合
-                                var canvasPos = e.GetPosition(MainCanvas);
-                                viewModel.SelectedLayer = layer;
-                                layer.SetJointPos(canvasPos.X, canvasPos.Y);
-                                e.Handled = true;
-                            }
-                            else
-                            {
-                                viewModel.SelectedLayer = layer;
-
-                                if (viewModel.IsSelectMoveMode)
-                                {
-                                    draggingLayer = layer;
-                                    layerMoved = false;
-                                    var canvasPos = e.GetPosition(MainCanvas);
-                                    layerDragStartOffset = new Point(layer.X - canvasPos.X, layer.Y - canvasPos.Y);
-                                    container.CaptureMouse();
-                                }
-                                e.Handled = true;
-                            }
+                            viewModel.SelectedLayer = layer;
+                            draggingLayer = layer;
+                            layerMoved = false;
+                            var canvasPos = e.GetPosition(MainCanvas);
+                            layerDragStartOffset = new Point(layer.X - canvasPos.X, layer.Y - canvasPos.Y);
+                            container.CaptureMouse();
+                            e.Handled = true;
                         }
                     };
 
@@ -374,7 +359,7 @@ namespace Ymm4BoneAnimationPlugin.Views
 
             bool jointMoved = false;
 
-            // 関節ピンのマウスイベント（選択＆関節ドラッグ移動＆ボーン結線）
+            // 関節ピンのマウスイベント（選択＆関節ドラッグ移動＆Shiftボーン結線）
             container.MouseDown += (s, e) =>
             {
                 if (e.ChangedButton == MouseButton.Left)
@@ -466,7 +451,7 @@ namespace Ymm4BoneAnimationPlugin.Views
             return null;
         }
 
-        #region キャンバスマウス操作 (ズーム・パン・ピン配置)
+        #region キャンバスマウス操作 (ズーム・パン・選択解除)
 
         void Canvas_MouseWheel(object sender, MouseWheelEventArgs e)
         {
@@ -502,19 +487,8 @@ namespace Ymm4BoneAnimationPlugin.Views
                     return;
                 }
 
-                var canvasPos = e.GetPosition(MainCanvas);
-
-                if (viewModel.IsAddPinAndBoneMode)
-                {
-                    // 関節ピン配置モード：クリック位置にあるパーツの関節を設定
-                    viewModel.PlaceJointAt(canvasPos.X, canvasPos.Y);
-                    e.Handled = true;
-                }
-                else
-                {
-                    // 移動・選択モードで背景クリック時は選択解除
-                    viewModel.SelectedLayer = null;
-                }
+                // 背景クリック時は選択解除
+                viewModel.SelectedLayer = null;
             }
         }
 

@@ -11,15 +11,6 @@ using Ymm4BoneAnimationPlugin.Shape;
 
 namespace Ymm4BoneAnimationPlugin.Views
 {
-    public enum PuppetToolMode
-    {
-        [Description("移動・選択")]
-        SelectMove,
-
-        [Description("関節ピン配置")]
-        AddPinAndBone,
-    }
-
     /// <summary>
     /// 画像パーツ＝ボーン（骨）。
     /// 各画像パーツが独立したボーンであり、親子関係（骨組み）を結ぶことができる。
@@ -222,7 +213,7 @@ namespace Ymm4BoneAnimationPlugin.Views
     internal record struct EditorSnapshot(ImmutableList<LayerSnapshot> Layers, string? SelectedLayerId);
 
     /// <summary>
-    /// 「画像そのものをボーンにする」直感的なパペットボーンエディタViewModel。
+    /// モードレス万能操作のパペットボーンエディタViewModel。
     /// </summary>
     public class PuppetEditorViewModel : Bindable
     {
@@ -231,23 +222,6 @@ namespace Ymm4BoneAnimationPlugin.Views
 
         readonly Stack<EditorSnapshot> undoStack = new();
         readonly Stack<EditorSnapshot> redoStack = new();
-
-        public PuppetToolMode CurrentTool
-        {
-            get => currentTool;
-            set
-            {
-                if (Set(ref currentTool, value))
-                {
-                    OnPropertyChanged(nameof(IsSelectMoveMode));
-                    OnPropertyChanged(nameof(IsAddPinAndBoneMode));
-                }
-            }
-        }
-        PuppetToolMode currentTool = PuppetToolMode.AddPinAndBone;
-
-        public bool IsSelectMoveMode { get => CurrentTool == PuppetToolMode.SelectMove; set { if (value) CurrentTool = PuppetToolMode.SelectMove; } }
-        public bool IsAddPinAndBoneMode { get => CurrentTool == PuppetToolMode.AddPinAndBone; set { if (value) CurrentTool = PuppetToolMode.AddPinAndBone; } }
 
         public PuppetImageLayerViewModel? SelectedLayer
         {
@@ -278,8 +252,6 @@ namespace Ymm4BoneAnimationPlugin.Views
         public double PanY { get => panY; set => Set(ref panY, value); }
         double panY = 0;
 
-        public ActionCommand AddPinAndBoneCommand { get; }
-        public ActionCommand SelectMoveCommand { get; }
         public ActionCommand ClearAllCommand { get; }
         public ActionCommand ResetViewCommand { get; }
         public ActionCommand AddImagesCommand { get; }
@@ -294,8 +266,6 @@ namespace Ymm4BoneAnimationPlugin.Views
 
         public PuppetEditorViewModel(ImmutableList<BoneItem> existingBones)
         {
-            AddPinAndBoneCommand = new ActionCommand(_ => true, _ => CurrentTool = PuppetToolMode.AddPinAndBone);
-            SelectMoveCommand = new ActionCommand(_ => true, _ => CurrentTool = PuppetToolMode.SelectMove);
             ClearAllCommand = new ActionCommand(_ => ImageLayers.Count > 0, _ => ClearAll());
             ResetViewCommand = new ActionCommand(_ => true, _ => ResetView());
             AddImagesCommand = new ActionCommand(_ => true, _ => SelectImages());
@@ -608,42 +578,6 @@ namespace Ymm4BoneAnimationPlugin.Views
             return result;
         }
 
-        /// <summary>
-        /// キャンバスクリック位置にあるパーツの関節ピン（アンカー）を配置し、直前のパーツと自動結合
-        /// </summary>
-        public void PlaceJointAt(double canvasX, double canvasY)
-        {
-            var targetLayer = SelectedLayer ?? FindLayerAt(canvasX, canvasY) ?? ImageLayers.LastOrDefault();
-            if (targetLayer == null)
-                return;
-
-            PushSnapshot();
-            targetLayer.SetJointPos(canvasX, canvasY);
-
-            // 直前に別のパーツが選択されていて、まだ親が設定されていなければ自動でボーン結線
-            if (SelectedLayer != null && SelectedLayer != targetLayer && string.IsNullOrEmpty(targetLayer.ParentId))
-            {
-                ConnectLayers(SelectedLayer, targetLayer);
-            }
-            else
-            {
-                SelectedLayer = targetLayer;
-            }
-        }
-
-        public PuppetImageLayerViewModel? FindLayerAt(double canvasX, double canvasY)
-        {
-            return ImageLayers
-                .OrderByDescending(l => l.ZOrder)
-                .FirstOrDefault(l =>
-                {
-                    var left = l.X - l.Width / 2.0;
-                    var top = l.Y - l.Height / 2.0;
-                    return canvasX >= left && canvasX <= left + l.Width &&
-                           canvasY >= top && canvasY <= top + l.Height;
-                });
-        }
-
         public void DeleteSelectedLayer()
         {
             if (SelectedLayer == null)
@@ -757,6 +691,7 @@ namespace Ymm4BoneAnimationPlugin.Views
             {
                 if (!ImageLayers.Any(l => l.FilePath.Equals(file, StringComparison.OrdinalIgnoreCase)))
                 {
+                    // パーツ分け立ち絵が本来の位置で綺麗に重なるよう、オフセットなし (0, 0) で配置
                     var layer = new PuppetImageLayerViewModel(file)
                     {
                         X = 0,

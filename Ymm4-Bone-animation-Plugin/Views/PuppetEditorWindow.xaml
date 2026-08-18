@@ -51,16 +51,10 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- ツールモード切り替え & Undo/Redo -->
+                <!-- 操作ボタン & Undo/Redo -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal">
                     <Button Content="↩ 戻る" Command="{Binding UndoCommand}" ToolTip="元に戻す (Ctrl+Z)"/>
                     <Button Content="↪ 進む" Command="{Binding RedoCommand}" ToolTip="やり直す (Ctrl+Y / Ctrl+Shift+Z)"/>
-                    <Separator Width="1" Margin="6,2" Background="#3F3F46"/>
-
-                    <RadioButton Content="📍 関節ピン配置 (クリック)" IsChecked="{Binding IsAddPinAndBoneMode}" Padding="6,2"
-                                 ToolTip="パーツ画像の回転中心（関節）をクリックしてピンを置きます。連続クリックで自動ボーン結線"/>
-                    <RadioButton Content="🖐 移動・選択" IsChecked="{Binding IsSelectMoveMode}" Padding="6,2"
-                                 ToolTip="画像パーツや関節ピンをドラッグ移動したり、クリックして選択します"/>
                     <Separator Width="1" Margin="6,2" Background="#3F3F46"/>
 
                     <Button Content="📁 画像追加" Command="{Binding AddImagesCommand}" ToolTip="パーツ画像を追加します（直接ドラッグ＆ドロップも可能）"/>
