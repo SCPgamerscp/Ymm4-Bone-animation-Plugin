@@ -147,10 +147,10 @@ namespace Ymm4BoneAnimationPlugin.Views
 
                     var selectionBorder = new Rectangle
                     {
-                        Stroke = new SolidColorBrush(Color.FromArgb(240, 0, 150, 255)),
-                        StrokeThickness = 2.5,
+                        Stroke = new SolidColorBrush(Color.FromArgb(240, 255, 119, 0)),
+                        StrokeThickness = 3.0,
                         StrokeDashArray = new DoubleCollection { 4, 2 },
-                        Visibility = layer.IsSelected ? Visibility.Visible : Visibility.Collapsed,
+                        Visibility = layer.IsHighlighted ? Visibility.Visible : Visibility.Collapsed,
                         IsHitTestVisible = false,
                     };
 
@@ -163,8 +163,8 @@ namespace Ymm4BoneAnimationPlugin.Views
 
                     layer.PropertyChanged += (s, e) =>
                     {
-                        if (e.PropertyName == nameof(PuppetImageLayerViewModel.IsSelected))
-                            selectionBorder.Visibility = layer.IsSelected ? Visibility.Visible : Visibility.Collapsed;
+                        if (e.PropertyName is nameof(PuppetImageLayerViewModel.IsSelected) or nameof(PuppetImageLayerViewModel.IsHighlighted))
+                            selectionBorder.Visibility = layer.IsHighlighted ? Visibility.Visible : Visibility.Collapsed;
                         else if (e.PropertyName is nameof(PuppetImageLayerViewModel.X) or nameof(PuppetImageLayerViewModel.Y) or nameof(PuppetImageLayerViewModel.ZOrder))
                             UpdateLayerPos();
                     };
@@ -335,7 +335,7 @@ namespace Ymm4BoneAnimationPlugin.Views
 
             var label = new TextBlock
             {
-                Text = pin.Name,
+                Text = pin.DisplayName,
                 Foreground = Brushes.White,
                 FontSize = 10,
                 FontWeight = FontWeights.Bold,
@@ -344,9 +344,9 @@ namespace Ymm4BoneAnimationPlugin.Views
 
             void UpdateVisualState()
             {
-                if (pin.IsSelected)
+                if (pin.IsHighlighted)
                 {
-                    outerCircle.Fill = new SolidColorBrush(Color.FromArgb(230, 255, 102, 0));
+                    outerCircle.Fill = new SolidColorBrush(Color.FromArgb(235, 255, 102, 0));
                     outerCircle.Stroke = Brushes.White;
                 }
                 else
@@ -358,10 +358,10 @@ namespace Ymm4BoneAnimationPlugin.Views
 
             pin.PropertyChanged += (s, e) =>
             {
-                if (e.PropertyName == nameof(PuppetPinViewModel.IsSelected))
+                if (e.PropertyName is nameof(PuppetPinViewModel.IsSelected) or nameof(PuppetPinViewModel.IsHighlighted))
                     UpdateVisualState();
-                else if (e.PropertyName == nameof(PuppetPinViewModel.Name))
-                    label.Text = pin.Name;
+                else if (e.PropertyName is nameof(PuppetPinViewModel.Name) or nameof(PuppetPinViewModel.DisplayName) or nameof(PuppetPinViewModel.ImagePath))
+                    label.Text = pin.DisplayName;
                 else if (e.PropertyName is nameof(PuppetPinViewModel.X) or nameof(PuppetPinViewModel.Y))
                 {
                     Canvas.SetLeft(container, pin.X - 12);

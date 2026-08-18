@@ -163,9 +163,13 @@
                                 <TextBlock Text="重なり順 (Z順)" Foreground="#AAAAAA" Margin="0,6,0,2"/>
                                 <TextBox Text="{Binding SelectedPin.ZOrder, UpdateSourceTrigger=PropertyChanged}" Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="4"/>
 
-                                <TextBlock Text="割り当て画像" Foreground="#AAAAAA" Margin="0,6,0,2"/>
-                                <TextBox Text="{Binding SelectedPin.ImagePath, Mode=OneWay}" Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="4" IsReadOnly="True"/>
-                                <Button Content="画像を選択..." Click="BrowsePinImage_Click" Margin="0,4,0,0" HorizontalAlignment="Right"/>
+                                <TextBlock Text="割り当て画像パーツ" Foreground="#AAAAAA" Margin="0,6,0,2"/>
+                                <ComboBox ItemsSource="{Binding ImageLayers}"
+                                          SelectedValue="{Binding SelectedPin.ImagePath, Mode=TwoWay}"
+                                          SelectedValuePath="FilePath"
+                                          DisplayMemberPath="FileName"
+                                          Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="4"/>
+                                <Button Content="別の画像ファイルを選択..." Click="BrowsePinImage_Click" Margin="0,4,0,0" HorizontalAlignment="Right" FontSize="11"/>
 
                                 <Separator Margin="0,10" Background="#3F3F46"/>
 
@@ -201,7 +205,7 @@
                                     <Button Content="⏬ 最背面" Command="{Binding SendLayerToBackCommand}" Padding="5,2" Margin="0,0,3,0" ToolTip="一番奥に表示"/>
                                     <Button Content="🗑 削除" Command="{Binding DeleteLayerCommand}" Padding="5,2" ToolTip="パーツを削除"/>
                                 </WrapPanel>
-                                <Border BorderBrush="#3F3F46" BorderThickness="1" Background="#1E1E1E" Height="130">
+                                <Border BorderBrush="#3F3F46" BorderThickness="1" Background="#1E1E1E" Height="140">
                                     <ListBox ItemsSource="{Binding ImageLayers}" SelectedItem="{Binding SelectedLayer, Mode=TwoWay}"
                                              Background="Transparent" BorderThickness="0" Foreground="#EEEEEE">
                                         <ListBox.ItemTemplate>
@@ -210,6 +214,7 @@
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="36"/>
                                                         <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
                                                     </Grid.ColumnDefinitions>
 
                                                     <!-- サムネイルプレビュー -->
@@ -222,6 +227,11 @@
                                                         <TextBlock Text="{Binding FileName}" FontWeight="Bold" FontSize="11" TextTrimming="CharacterEllipsis"/>
                                                         <TextBlock Text="{Binding ZOrder, StringFormat='Z順: {0}'}" Foreground="#888888" FontSize="10"/>
                                                     </StackPanel>
+
+                                                    <!-- 割り当てピン情報バッジ -->
+                                                    <Border Grid.Column="2" Background="#2A3540" BorderBrush="#3584E4" BorderThickness="1" CornerRadius="3" Padding="5,2" Margin="4,0,0,0" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding AssignedPinName}" Foreground="#78AEED" FontSize="10" FontWeight="SemiBold"/>
+                                                    </Border>
                                                 </Grid>
                                             </DataTemplate>
                                         </ListBox.ItemTemplate>

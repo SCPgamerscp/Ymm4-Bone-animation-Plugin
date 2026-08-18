@@ -27,7 +27,7 @@ namespace Ymm4BoneAnimationPlugin.Views
     {
         public string Id { get; init; } = Guid.NewGuid().ToString("N");
 
-        public string Name { get => name; set => Set(ref name, value); }
+        public string Name { get => name; set { if (Set(ref name, value)) OnPropertyChanged(nameof(DisplayName)); } }
         string name = "ピン";
 
         public double X { get => x; set => Set(ref x, value); }
@@ -39,8 +39,22 @@ namespace Ymm4BoneAnimationPlugin.Views
         public string? ParentPinId { get => parentPinId; set => Set(ref parentPinId, value); }
         string? parentPinId;
 
-        public string? ImagePath { get => imagePath; set => Set(ref imagePath, value); }
+        public string? ImagePath
+        {
+            get => imagePath;
+            set
+            {
+                if (Set(ref imagePath, value))
+                {
+                    OnPropertyChanged(nameof(ImageFileName));
+                    OnPropertyChanged(nameof(DisplayName));
+                }
+            }
+        }
         string? imagePath;
+
+        public string ImageFileName => !string.IsNullOrEmpty(ImagePath) ? Path.GetFileName(ImagePath) : "（未割り当て）";
+        public string DisplayName => !string.IsNullOrEmpty(ImagePath) ? $"{Name} [{Path.GetFileNameWithoutExtension(ImagePath)}]" : Name;
 
         public double AnchorX { get => anchorX; set => Set(ref anchorX, value); }
         double anchorX = 0.5;
@@ -74,8 +88,11 @@ namespace Ymm4BoneAnimationPlugin.Views
         public bool IsPhysicsEnabled { get => isPhysicsEnabled; set => Set(ref isPhysicsEnabled, value); }
         bool isPhysicsEnabled;
 
-        public bool IsSelected { get => isSelected; set => Set(ref isSelected, value); }
+        public bool IsSelected { get => isSelected; set { if (Set(ref isSelected, value)) OnPropertyChanged(nameof(IsHighlighted)); } }
         bool isSelected;
+
+        public bool IsHighlighted { get => isHighlighted || isSelected; set => Set(ref isHighlighted, value); }
+        bool isHighlighted;
 
         /// <summary>元のBoneItem（既存ボーンのプロパティを保持するため）</summary>
         public BoneItem? OriginalBone { get; set; }
@@ -119,7 +136,7 @@ namespace Ymm4BoneAnimationPlugin.Views
 
     /// <summary>
     /// キャンバス上に配置された画像パーツ（レイヤー）。
-    /// サムネイルプレビューを保持。
+    /// サムネイルプレビューと割り当てボーン情報を保持。
     /// </summary>
     public class PuppetImageLayerViewModel : Bindable
     {
@@ -145,8 +162,16 @@ namespace Ymm4BoneAnimationPlugin.Views
         public int ZOrder { get => zOrder; set => Set(ref zOrder, value); }
         int zOrder;
 
-        public bool IsSelected { get => isSelected; set => Set(ref isSelected, value); }
+        public string AssignedPinName { get => assignedPinName; set { if (Set(ref assignedPinName, value)) OnPropertyChanged(nameof(HasAssignedPin)); } }
+        string assignedPinName = "⚪ 未割り当て";
+
+        public bool HasAssignedPin => AssignedPinName != "⚪ 未割り当て" && !string.IsNullOrEmpty(AssignedPinName);
+
+        public bool IsSelected { get => isSelected; set { if (Set(ref isSelected, value)) OnPropertyChanged(nameof(IsHighlighted)); } }
         bool isSelected;
+
+        public bool IsHighlighted { get => isHighlighted || isSelected; set => Set(ref isHighlighted, value); }
+        bool isHighlighted;
 
         public PuppetImageLayerViewModel(string filePath)
         {
@@ -245,7 +270,12 @@ namespace Ymm4BoneAnimationPlugin.Views
                 if (Set(ref selectedPin, value) && selectedPin != null)
                 {
                     selectedPin.IsSelected = true;
-                    SelectedLayer = null;
+                    // ピンに紐付く画像パーツをハイライト
+                    UpdateHighlights();
+                }
+                else
+                {
+                    UpdateHighlights();
                 }
                 RaiseCommandStates();
             }
@@ -262,17 +292,56 @@ namespace Ymm4BoneAnimationPlugin.Views
                 if (Set(ref selectedLayer, value) && selectedLayer != null)
                 {
                     selectedLayer.IsSelected = true;
-                    if (SelectedPin != null)
-                    {
-                        SelectedPin.IsSelected = false;
-                        selectedPin = null;
-                        OnPropertyChanged(nameof(SelectedPin));
-                    }
+                    // 画像パーツに紐付くピンをハイライト
+                    UpdateHighlights();
+                }
+                else
+                {
+                    UpdateHighlights();
                 }
                 RaiseCommandStates();
             }
         }
         PuppetImageLayerViewModel? selectedLayer;
+
+        public void UpdateHighlights()
+        {
+            // 画像側のハイライト更新
+            foreach (var layer in ImageLayers)
+            {
+                layer.IsHighlighted = (SelectedPin != null && !string.IsNullOrEmpty(SelectedPin.ImagePath) &&
+                                       SelectedPin.ImagePath.Equals(layer.FilePath, StringComparison.OrdinalIgnoreCase))
+                                      || layer.IsSelected;
+            }
+
+            // ピン側のハイライト更新
+            foreach (var pin in Pins)
+            {
+                pin.IsHighlighted = (SelectedLayer != null && !string.IsNullOrEmpty(pin.ImagePath) &&
+                                     pin.ImagePath.Equals(SelectedLayer.FilePath, StringComparison.OrdinalIgnoreCase))
+                                    || pin.IsSelected;
+            }
+        }
+
+        public void UpdatePinAssignments()
+        {
+            foreach (var layer in ImageLayers)
+            {
+                var assignedPins = Pins
+                    .Where(p => !string.IsNullOrEmpty(p.ImagePath) && p.ImagePath.Equals(layer.FilePath, StringComparison.OrdinalIgnoreCase))
+                    .Select(p => p.Name)
+                    .ToList();
+
+                if (assignedPins.Count > 0)
+                {
+                    layer.AssignedPinName = $"🦴 {string.Join(", ", assignedPins)}";
+                }
+                else
+                {
+                    layer.AssignedPinName = "⚪ 未割り当て";
+                }
+            }
+        }
 
         public double Zoom { get => zoom; set => Set(ref zoom, Math.Clamp(value, 0.1, 10.0)); }
         double zoom = 1.0;
@@ -312,6 +381,9 @@ namespace Ymm4BoneAnimationPlugin.Views
             SendLayerBackwardCommand = new ActionCommand(_ => SelectedLayer != null, _ => ChangeSelectedLayerZOrder(-1));
             SendLayerToBackCommand = new ActionCommand(_ => SelectedLayer != null, _ => SendSelectedLayerToBack());
             DeleteLayerCommand = new ActionCommand(_ => SelectedLayer != null, _ => DeleteSelectedLayer());
+
+            Pins.CollectionChanged += (s, e) => UpdatePinAssignments();
+            ImageLayers.CollectionChanged += (s, e) => UpdatePinAssignments();
 
             ImportExistingBones(existingBones);
         }
@@ -427,7 +499,7 @@ namespace Ymm4BoneAnimationPlugin.Views
             Pins.Clear();
             foreach (var p in snapshot.Pins)
             {
-                Pins.Add(new PuppetPinViewModel
+                var pin = new PuppetPinViewModel
                 {
                     Id = p.Id,
                     Name = p.Name,
@@ -446,7 +518,9 @@ namespace Ymm4BoneAnimationPlugin.Views
                     IsIkEnabled = p.IsIkEnabled,
                     IsPhysicsEnabled = p.IsPhysicsEnabled,
                     OriginalBone = p.OriginalBone,
-                });
+                };
+                pin.PropertyChanged += (s, e) => { if (e.PropertyName == nameof(PuppetPinViewModel.ImagePath)) UpdatePinAssignments(); };
+                Pins.Add(pin);
             }
 
             ImageLayers.Clear();
@@ -464,6 +538,7 @@ namespace Ymm4BoneAnimationPlugin.Views
             }
 
             RebuildBoneConnections();
+            UpdatePinAssignments();
             SelectedPin = Pins.FirstOrDefault(p => p.Id == snapshot.SelectedPinId);
             SelectedLayer = ImageLayers.FirstOrDefault(l => l.Id == snapshot.SelectedLayerId);
         }
@@ -504,6 +579,7 @@ namespace Ymm4BoneAnimationPlugin.Views
                     Y = pinY,
                     OriginalBone = bone,
                 };
+                pin.PropertyChanged += (s, e) => { if (e.PropertyName == nameof(PuppetPinViewModel.ImagePath)) UpdatePinAssignments(); };
                 pinMap[bone.Id] = pin;
                 Pins.Add(pin);
 
@@ -523,6 +599,7 @@ namespace Ymm4BoneAnimationPlugin.Views
             }
 
             RebuildBoneConnections();
+            UpdatePinAssignments();
             if (Pins.Count > 0)
                 SelectedPin = Pins[0];
         }
@@ -543,6 +620,7 @@ namespace Ymm4BoneAnimationPlugin.Views
                 Y = Math.Round(y, 1),
                 ZOrder = Pins.Count,
             };
+            newPin.PropertyChanged += (s, e) => { if (e.PropertyName == nameof(PuppetPinViewModel.ImagePath)) UpdatePinAssignments(); };
 
             // クリック位置にある画像パーツを探して割り当て＆アンカー自動計算
             var hitLayer = FindLayerAt(x, y) ?? ImageLayers.LastOrDefault();
@@ -568,6 +646,7 @@ namespace Ymm4BoneAnimationPlugin.Views
 
             Pins.Add(newPin);
             RebuildBoneConnections();
+            UpdatePinAssignments();
             SelectedPin = newPin;
         }
 
@@ -631,6 +710,7 @@ namespace Ymm4BoneAnimationPlugin.Views
 
             Pins.Remove(removePin);
             RebuildBoneConnections();
+            UpdatePinAssignments();
             SelectedPin = Pins.LastOrDefault();
         }
 
@@ -642,6 +722,7 @@ namespace Ymm4BoneAnimationPlugin.Views
             PushSnapshot();
             var removeLayer = SelectedLayer;
             ImageLayers.Remove(removeLayer);
+            UpdatePinAssignments();
             SelectedLayer = null;
         }
 
@@ -706,6 +787,7 @@ namespace Ymm4BoneAnimationPlugin.Views
             ImageLayers.Clear();
             SelectedPin = null;
             SelectedLayer = null;
+            UpdatePinAssignments();
             RaiseCommandStates();
         }
 
@@ -755,6 +837,7 @@ namespace Ymm4BoneAnimationPlugin.Views
                     SelectedLayer = layer;
                 }
             }
+            UpdatePinAssignments();
         }
 
         /// <summary>
