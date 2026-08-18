@@ -251,18 +251,18 @@ namespace Ymm4BoneAnimationPlugin.Shape
             dc.DrawLine(new Vector2(origin.X - crossSize, origin.Y), new Vector2(origin.X + crossSize, origin.Y), bBrush, 2f);
             dc.DrawLine(new Vector2(origin.X, origin.Y - crossSize), new Vector2(origin.X, origin.Y + crossSize), bBrush, 2f);
 
-            // --- 2. 選択中ボーンの回転ハンドル（外側・小さな丸 ●）---
+            // --- 2. 選択中ボーンの回転ハンドル（先端付近：120px 離して明確に区別）---
             if (isSelected)
             {
-                var rotOffset = Vector2.Transform(new Vector2(55f, 0f), transform.World) - transform.World.Translation;
+                var rotOffset = Vector2.Transform(new Vector2(120f, 0f), transform.World) - transform.World.Translation;
                 var rotPos = origin + rotOffset;
 
                 // ハンドル接続線（破線感覚のライン）
                 dc.DrawLine(origin, rotPos, selectedBoneBrush, 2f);
 
-                // 小さな回転丸 ●（半径 5px）
-                dc.FillEllipse(new Ellipse(rotPos, 5.5f, 5.5f), selectedJointBrush);
-                dc.DrawEllipse(new Ellipse(rotPos, 7.5f, 7.5f), selectedBoneBrush, 1.5f);
+                // 先端の回転丸 ●
+                dc.FillEllipse(new Ellipse(rotPos, 6f, 6f), selectedJointBrush);
+                dc.DrawEllipse(new Ellipse(rotPos, 8f, 8f), selectedBoneBrush, 1.5f);
             }
 
             // IKターゲット
@@ -276,8 +276,8 @@ namespace Ymm4BoneAnimationPlugin.Shape
 
         /// <summary>
         /// 完全パペット変形方式：
-        /// プレビュー画面には「現在選択されているパーツのピン（1点のみ）」を表示し、
-        /// 中心の大丸（移動）と外側の小丸（回転）で直感的にアニメーション操作できる。
+        /// プレビュー画面には「現在選択されているパーツのピン」を表示。
+        /// 根元の丸（関節位置）＝移動、先端の丸（120px離れた位置）＝回転として明確に区別する。
         /// </summary>
         void UpdateControllers(
             IReadOnlyList<BoneTransform> transforms,
@@ -300,7 +300,7 @@ namespace Ymm4BoneAnimationPlugin.Shape
                 {
                     var isRoot = string.IsNullOrEmpty(targetTransform.Bone.ParentId);
 
-                    // 1. 位置移動ピン（中心・大きな丸）
+                    // 1. 位置移動ピン（関節の根元）
                     var movePoint = new ControllerPoint(
                         new Vector3(origin.X, origin.Y, 0),
                         arg =>
@@ -321,8 +321,8 @@ namespace Ymm4BoneAnimationPlugin.Shape
                             }
                         });
 
-                    // 2. 回転ハンドル（外側・小さな丸：55px オフセット）
-                    var rotOffset = Vector2.Transform(new Vector2(55f, 0f), targetTransform.World) - targetTransform.World.Translation;
+                    // 2. 回転ハンドル（パーツの先端付近：120px 離して配置）
+                    var rotOffset = Vector2.Transform(new Vector2(120f, 0f), targetTransform.World) - targetTransform.World.Translation;
                     var rotPos = origin + rotOffset;
 
                     var rotatePoint = new ControllerPoint(
