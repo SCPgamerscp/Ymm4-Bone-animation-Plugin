@@ -520,8 +520,6 @@ namespace Ymm4BoneAnimationPlugin.Views
                         ImageLayers.Add(layer);
                     }
                 }
-
-                curY += Math.Max(40, bone.Length);
             }
 
             RebuildBoneConnections();
@@ -741,23 +739,20 @@ namespace Ymm4BoneAnimationPlugin.Views
 
             PushSnapshot();
             int curZ = ImageLayers.Count == 0 ? 0 : ImageLayers.Max(l => l.ZOrder) + 1;
-            double offsetX = ImageLayers.Count * 20;
-            double offsetY = ImageLayers.Count * 20;
 
             foreach (var file in valid)
             {
                 if (!ImageLayers.Any(l => l.FilePath.Equals(file, StringComparison.OrdinalIgnoreCase)))
                 {
+                    // パーツ分け立ち絵が本来の位置で綺麗に重なるよう、オフセットなし (0, 0) で配置
                     var layer = new PuppetImageLayerViewModel(file)
                     {
-                        X = offsetX,
-                        Y = offsetY,
+                        X = 0,
+                        Y = 0,
                         ZOrder = curZ++,
                     };
                     ImageLayers.Add(layer);
                     SelectedLayer = layer;
-                    offsetX += 30;
-                    offsetY += 30;
                 }
             }
         }
