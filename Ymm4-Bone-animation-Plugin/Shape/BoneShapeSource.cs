@@ -237,17 +237,29 @@ namespace Ymm4BoneAnimationPlugin.Shape
             var bBrush = isSelected ? selectedBoneBrush : boneBrush;
             var jBrush = isSelected ? selectedJointBrush : jointBrush;
             var lineWidth = isSelected ? 4.5f : 2f;
-            var jointRadius = isSelected ? 6.5f : 4f;
 
             // ボーン本体
             dc.DrawLine(origin, tip, bBrush, lineWidth);
 
-            // 関節（根本）
-            dc.FillEllipse(new Ellipse(origin, jointRadius, jointRadius), jBrush);
-            if (isSelected)
-                dc.DrawEllipse(new Ellipse(origin, jointRadius + 2f, jointRadius + 2f), bBrush, 1.5f);
+            // --- 1. 移動ハンドル（青い四角 ■）---
+            var sqHalf = isSelected ? 7f : 5f;
+            var sqRect = new Vortice.RawRectF(origin.X - sqHalf, origin.Y - sqHalf, origin.X + sqHalf, origin.Y + sqHalf);
+            dc.FillRectangle(sqRect, boneBrush);
+            dc.DrawRectangle(sqRect, selectedBoneBrush, 2f);
 
-            // 先端の点は描画せず、ピン位置（根本）のみを描画
+            // --- 2. 選択中ボーンの回転ハンドル（オレンジの丸 ●）---
+            if (isSelected)
+            {
+                var rotOffset = Vector2.Transform(new Vector2(45f, 0f), transform.World) - transform.World.Translation;
+                var rotPos = origin + rotOffset;
+
+                // ハンドル接続線
+                dc.DrawLine(origin, rotPos, selectedBoneBrush, 2f);
+
+                // 回転丸 ●
+                dc.FillEllipse(new Ellipse(rotPos, 6.5f, 6.5f), selectedJointBrush);
+                dc.DrawEllipse(new Ellipse(rotPos, 8.5f, 8.5f), selectedBoneBrush, 1.5f);
+            }
 
             // IKターゲット
             var ik = transform.Bone.Ik;
