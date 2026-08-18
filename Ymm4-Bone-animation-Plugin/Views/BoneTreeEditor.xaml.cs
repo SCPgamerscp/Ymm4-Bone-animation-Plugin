@@ -96,13 +96,6 @@ namespace Ymm4BoneAnimationPlugin.Views
 
         void Tree_DragOver(object sender, DragEventArgs e)
         {
-            if (e.Data.GetDataPresent(DataFormats.FileDrop))
-            {
-                e.Effects = DragDropEffects.Copy;
-                e.Handled = true;
-                return;
-            }
-
             e.Effects = CanDrop(e) ? DragDropEffects.Move : DragDropEffects.None;
             e.Handled = true;
         }
@@ -133,16 +126,6 @@ namespace Ymm4BoneAnimationPlugin.Views
 
             if (DataContext is not BoneTreeEditorViewModel vm)
                 return;
-
-            // ファイルのドラッグ＆ドロップ（パーツ画像一括追加）
-            if (e.Data.GetDataPresent(DataFormats.FileDrop))
-            {
-                if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
-                {
-                    vm.AddBonesFromFiles(files);
-                }
-                return;
-            }
 
             // ボーンノードのドラッグ＆ドロップ（親子関係変更）
             if (e.Data.GetData(typeof(BoneTreeNodeViewModel)) is not BoneTreeNodeViewModel source)

@@ -166,7 +166,7 @@
                                 <TextBox Text="{Binding SelectedPin.ZOrder, UpdateSourceTrigger=PropertyChanged}" Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="4"/>
 
                                 <TextBlock Text="割り当て画像" Foreground="#AAAAAA" Margin="0,6,0,2"/>
-                                <TextBox Text="{Binding SelectedPin.ImagePath, UpdateSourceTrigger=PropertyChanged}" Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="4" IsReadOnly="True"/>
+                                <TextBox Text="{Binding SelectedPin.ImagePath, Mode=OneWay}" Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="4" IsReadOnly="True"/>
                                 <Button Content="画像を選択..." Click="BrowsePinImage_Click" Margin="0,4,0,0" HorizontalAlignment="Right"/>
                             </StackPanel>
                         </GroupBox>
@@ -175,7 +175,7 @@
                         <GroupBox Header="🖼 選択中画像パーツの設定" Foreground="#CCCCCC" BorderBrush="#3F3F46" Margin="0,0,0,12" Padding="8">
                             <StackPanel IsEnabled="{Binding SelectedLayer, Converter={x:Static local:PuppetEditorWindow.NotNullConverter}}">
                                 <TextBlock Text="ファイル名" Foreground="#AAAAAA" Margin="0,2,0,2"/>
-                                <TextBox Text="{Binding SelectedLayer.FileName}" Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="4" IsReadOnly="True"/>
+                                <TextBox Text="{Binding SelectedLayer.FileName, Mode=OneWay}" Background="#333337" Foreground="#FFFFFF" BorderBrush="#3F3F46" Padding="4" IsReadOnly="True"/>
 
                                 <Grid Margin="0,6,0,2">
                                     <Grid.ColumnDefinitions>

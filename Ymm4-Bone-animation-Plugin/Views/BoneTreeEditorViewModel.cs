@@ -46,13 +46,6 @@ namespace Ymm4BoneAnimationPlugin.Views
         }
         BoneItem? selectedBone;
 
-        public ActionCommand AddCommand { get; }
-        public ActionCommand AddChildCommand { get; }
-        public ActionCommand RemoveCommand { get; }
-        public ActionCommand MoveUpCommand { get; }
-        public ActionCommand MoveDownCommand { get; }
-        public ActionCommand UnparentCommand { get; }
-        public ActionCommand AddImagesCommand { get; }
         public ActionCommand OpenPuppetEditorCommand { get; }
 
         public BoneTreeEditorViewModel(ItemProperty[] properties)
@@ -60,34 +53,6 @@ namespace Ymm4BoneAnimationPlugin.Views
             this.properties = properties;
             item = (INotifyPropertyChanged)properties[0].PropertyOwner;
             item.PropertyChanged += OnItemPropertyChanged;
-
-            AddCommand = new ActionCommand(
-                _ => true,
-                _ => AddBone(asChild: false));
-
-            AddChildCommand = new ActionCommand(
-                _ => SelectedBone != null,
-                _ => AddBone(asChild: true));
-
-            RemoveCommand = new ActionCommand(
-                _ => SelectedBone != null && Bones.Count > 1,
-                _ => RemoveSelected());
-
-            MoveUpCommand = new ActionCommand(
-                _ => IndexOfSelected() > 0,
-                _ => MoveSelected(-1));
-
-            MoveDownCommand = new ActionCommand(
-                _ => IndexOfSelected() >= 0 && IndexOfSelected() < Bones.Count - 1,
-                _ => MoveSelected(1));
-
-            UnparentCommand = new ActionCommand(
-                _ => SelectedBone != null && !string.IsNullOrEmpty(SelectedBone.ParentId),
-                _ => SetParent(SelectedBone!.Id, string.Empty));
-
-            AddImagesCommand = new ActionCommand(
-                _ => true,
-                _ => SelectAndAddImages());
 
             OpenPuppetEditorCommand = new ActionCommand(
                 _ => true,
@@ -154,59 +119,6 @@ namespace Ymm4BoneAnimationPlugin.Views
                 Walk(RootNodes);
                 RaiseCommandStates();
             }
-        }
-
-        void SelectAndAddImages()
-        {
-            var dialog = new Microsoft.Win32.OpenFileDialog
-            {
-                Title = "パーツ画像の選択（複数可）",
-                Filter = "画像ファイル (*.png;*.jpg;*.jpeg;*.bmp;*.webp;*.svg)|*.png;*.jpg;*.jpeg;*.bmp;*.webp;*.svg|すべてのファイル (*.*)|*.*",
-                Multiselect = true,
-            };
-
-            if (dialog.ShowDialog() == true && dialog.FileNames.Length > 0)
-            {
-                AddBonesFromFiles(dialog.FileNames);
-            }
-        }
-
-        /// <summary>
-        /// 画像ファイル一覧からボーンを一括生成して追加する。
-        /// </summary>
-        public void AddBonesFromFiles(IEnumerable<string> filePaths)
-        {
-            var validFiles = filePaths
-                .Where(f => !string.IsNullOrWhiteSpace(f) && System.IO.File.Exists(f))
-                .ToList();
-
-            if (validFiles.Count == 0)
-                return;
-
-            BeginEdit?.Invoke(this, EventArgs.Empty);
-
-            var updated = Bones.Select(b => new BoneItem(b)).ToList();
-            var baseOrder = updated.Count == 0 ? 0 : updated.Max(b => b.BaseZOrder) + 1;
-            var parentId = SelectedBone?.Id ?? string.Empty;
-
-            BoneItem? lastAdded = null;
-            foreach (var file in validFiles)
-            {
-                var fileName = System.IO.Path.GetFileNameWithoutExtension(file);
-                var newBone = new BoneItem(fileName, parentId)
-                {
-                    BaseZOrder = baseOrder++,
-                    ImageSlots = [new BoneImageSlot(fileName, file)],
-                };
-                updated.Add(newBone);
-                lastAdded = newBone;
-            }
-
-            Commit(updated);
-            EndEdit?.Invoke(this, EventArgs.Empty);
-
-            if (lastAdded != null)
-                SelectedBone = Bones.FirstOrDefault(b => b.Id == lastAdded.Id);
         }
 
         /// <summary>プロパティから現在の値を読み直し、ツリーを再構築する。</summary>
@@ -370,79 +282,6 @@ namespace Ymm4BoneAnimationPlugin.Views
             return skeleton;
         }
 
-        void AddBone(bool asChild)
-        {
-            BeginEdit?.Invoke(this, EventArgs.Empty);
-
-            var updated = Bones.Select(b => new BoneItem(b)).ToList();
-            var parentId = asChild && SelectedBone != null ? SelectedBone.Id : string.Empty;
-            var newBone = new BoneItem($"ボーン{updated.Count + 1}", parentId)
-            {
-                BaseZOrder = updated.Count == 0 ? 0 : updated.Max(b => b.BaseZOrder) + 1,
-            };
-
-            // 選択中ボーンの直後に挿入する
-            var insertIndex = SelectedBone != null
-                ? updated.FindIndex(b => b.Id == SelectedBone.Id) + 1
-                : updated.Count;
-            updated.Insert(Math.Clamp(insertIndex, 0, updated.Count), newBone);
-
-            Commit(updated);
-            EndEdit?.Invoke(this, EventArgs.Empty);
-
-            SelectedBone = Bones.FirstOrDefault(b => b.Id == newBone.Id);
-        }
-
-        void RemoveSelected()
-        {
-            if (SelectedBone is null || Bones.Count <= 1)
-                return;
-
-            var removeId = SelectedBone.Id;
-            var removedParentId = SelectedBone.ParentId;
-
-            BeginEdit?.Invoke(this, EventArgs.Empty);
-
-            var updated = Bones
-                .Where(b => b.Id != removeId)
-                .Select(b => new BoneItem(b))
-                .ToList();
-
-            // 子ボーンは削除されたボーンの親へ引き継ぐ
-            foreach (var child in updated.Where(b => b.ParentId == removeId))
-                child.ParentId = removedParentId;
-
-            Commit(updated);
-            EndEdit?.Invoke(this, EventArgs.Empty);
-
-            SelectedBone = Bones.FirstOrDefault();
-        }
-
-        void MoveSelected(int offset)
-        {
-            var index = IndexOfSelected();
-            var newIndex = index + offset;
-            if (index < 0 || newIndex < 0 || newIndex >= Bones.Count)
-                return;
-
-            var movedId = SelectedBone!.Id;
-
-            BeginEdit?.Invoke(this, EventArgs.Empty);
-
-            var updated = Bones.Select(b => new BoneItem(b)).ToList();
-            var moved = updated[index];
-            updated.RemoveAt(index);
-            updated.Insert(newIndex, moved);
-
-            Commit(updated);
-            EndEdit?.Invoke(this, EventArgs.Empty);
-
-            SelectedBone = Bones.FirstOrDefault(b => b.Id == movedId);
-        }
-
-        int IndexOfSelected()
-            => SelectedBone is null ? -1 : Bones.FindIndex(b => b.Id == SelectedBone.Id);
-
         /// <summary>変更内容を全ての選択アイテムへ書き込む。</summary>
         void Commit(List<BoneItem> updated)
         {
@@ -578,12 +417,7 @@ namespace Ymm4BoneAnimationPlugin.Views
 
         void RaiseCommandStates()
         {
-            AddCommand.RaiseCanExecuteChanged();
-            AddChildCommand.RaiseCanExecuteChanged();
-            RemoveCommand.RaiseCanExecuteChanged();
-            MoveUpCommand.RaiseCanExecuteChanged();
-            MoveDownCommand.RaiseCanExecuteChanged();
-            UnparentCommand.RaiseCanExecuteChanged();
+            OpenPuppetEditorCommand.RaiseCanExecuteChanged();
         }
 
         public void Dispose()
