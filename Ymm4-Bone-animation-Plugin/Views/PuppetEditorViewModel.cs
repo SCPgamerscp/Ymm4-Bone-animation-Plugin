@@ -467,22 +467,19 @@ namespace Ymm4BoneAnimationPlugin.Views
             if (existingBones == null || existingBones.Count == 0)
                 return;
 
+            var boneMap = existingBones.ToDictionary(b => b.Id);
             var layerMap = new Dictionary<string, PuppetImageLayerViewModel>();
 
+            // 1. 全パーツのインスタンスを作成
             foreach (var bone in existingBones)
             {
                 var imagePath = bone.ImageSlots.FirstOrDefault(s => !string.IsNullOrEmpty(s.FilePath))?.FilePath;
                 if (string.IsNullOrEmpty(imagePath) || !File.Exists(imagePath))
                     continue;
 
-                var pinX = bone.X.Values.Count > 0 ? bone.X.Values[0].Value : 0;
-                var pinY = bone.Y.Values.Count > 0 ? bone.Y.Values[0].Value : 0;
-
                 var layer = new PuppetImageLayerViewModel(imagePath)
                 {
                     Id = bone.Id,
-                    X = pinX,
-                    Y = pinY,
                     ZOrder = bone.BaseZOrder,
                     ParentId = bone.ParentId,
                     AnchorX = bone.AnchorX,
@@ -498,6 +495,31 @@ namespace Ymm4BoneAnimationPlugin.Views
                 };
                 layerMap[bone.Id] = layer;
                 ImageLayers.Add(layer);
+            }
+
+            // 2. 親からの相対座標を階層順に足し合わせ、エディタ上の絶対座標（ワールド位置）を完全復元
+            System.Numerics.Vector2 GetWorldJoint(string boneId, HashSet<string> visited)
+            {
+                if (!visited.Add(boneId) || !boneMap.TryGetValue(boneId, out var bone))
+                    return System.Numerics.Vector2.Zero;
+
+                var localX = bone.X.Values.Count > 0 ? (float)bone.X.Values[0].Value : 0f;
+                var localY = bone.Y.Values.Count > 0 ? (float)bone.Y.Values[0].Value : 0f;
+                var localPos = new System.Numerics.Vector2(localX, localY);
+
+                if (!string.IsNullOrEmpty(bone.ParentId) && boneMap.ContainsKey(bone.ParentId))
+                {
+                    return GetWorldJoint(bone.ParentId, visited) + localPos;
+                }
+
+                return localPos;
+            }
+
+            foreach (var layer in ImageLayers)
+            {
+                var worldPos = GetWorldJoint(layer.Id, new HashSet<string>());
+                layer.X = Math.Round(worldPos.X, 1);
+                layer.Y = Math.Round(worldPos.Y, 1);
             }
 
             RebuildBoneConnections();
