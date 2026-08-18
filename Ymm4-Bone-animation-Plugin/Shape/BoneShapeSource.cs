@@ -238,27 +238,31 @@ namespace Ymm4BoneAnimationPlugin.Shape
             var jBrush = isSelected ? selectedJointBrush : jointBrush;
             var lineWidth = isSelected ? 4.5f : 2f;
 
-            // ボーン本体
+            // ボーン本体の接続線
             dc.DrawLine(origin, tip, bBrush, lineWidth);
 
-            // --- 1. 移動ハンドル（青い四角 ■）---
-            var sqHalf = isSelected ? 7f : 5f;
-            var sqRect = new Vortice.RawRectF(origin.X - sqHalf, origin.Y - sqHalf, origin.X + sqHalf, origin.Y + sqHalf);
-            dc.FillRectangle(sqRect, boneBrush);
-            dc.DrawRectangle(sqRect, selectedBoneBrush, 2f);
+            // --- 1. 移動ハンドル（中心・大きな丸 ＋ 十字マーク）---
+            var bigRadius = isSelected ? 15f : 10f;
+            dc.FillEllipse(new Ellipse(origin, bigRadius, bigRadius), jBrush);
+            dc.DrawEllipse(new Ellipse(origin, bigRadius, bigRadius), bBrush, 2.5f);
 
-            // --- 2. 選択中ボーンの回転ハンドル（オレンジの丸 ●）---
+            // 十字マーク（＋）を描画して移動ハンドルであることを明示
+            var crossSize = bigRadius * 0.6f;
+            dc.DrawLine(new Vector2(origin.X - crossSize, origin.Y), new Vector2(origin.X + crossSize, origin.Y), bBrush, 2f);
+            dc.DrawLine(new Vector2(origin.X, origin.Y - crossSize), new Vector2(origin.X, origin.Y + crossSize), bBrush, 2f);
+
+            // --- 2. 選択中ボーンの回転ハンドル（外側・小さな丸 ●）---
             if (isSelected)
             {
-                var rotOffset = Vector2.Transform(new Vector2(45f, 0f), transform.World) - transform.World.Translation;
+                var rotOffset = Vector2.Transform(new Vector2(55f, 0f), transform.World) - transform.World.Translation;
                 var rotPos = origin + rotOffset;
 
-                // ハンドル接続線
+                // ハンドル接続線（破線感覚のライン）
                 dc.DrawLine(origin, rotPos, selectedBoneBrush, 2f);
 
-                // 回転丸 ●
-                dc.FillEllipse(new Ellipse(rotPos, 6.5f, 6.5f), selectedJointBrush);
-                dc.DrawEllipse(new Ellipse(rotPos, 8.5f, 8.5f), selectedBoneBrush, 1.5f);
+                // 小さな回転丸 ●（半径 5px）
+                dc.FillEllipse(new Ellipse(rotPos, 5.5f, 5.5f), selectedJointBrush);
+                dc.DrawEllipse(new Ellipse(rotPos, 7.5f, 7.5f), selectedBoneBrush, 1.5f);
             }
 
             // IKターゲット
@@ -273,7 +277,7 @@ namespace Ymm4BoneAnimationPlugin.Shape
         /// <summary>
         /// 完全パペット変形方式：
         /// プレビュー画面には「現在選択されているパーツのピン（1点のみ）」を表示し、
-        /// 画面上に複数の丸が重複して並ばないようにする。
+        /// 中心の大丸（移動）と外側の小丸（回転）で直感的にアニメーション操作できる。
         /// </summary>
         void UpdateControllers(
             IReadOnlyList<BoneTransform> transforms,
@@ -296,7 +300,7 @@ namespace Ymm4BoneAnimationPlugin.Shape
                 {
                     var isRoot = string.IsNullOrEmpty(targetTransform.Bone.ParentId);
 
-                    // 1. 位置移動ピン（中心点）
+                    // 1. 位置移動ピン（中心・大きな丸）
                     var movePoint = new ControllerPoint(
                         new Vector3(origin.X, origin.Y, 0),
                         arg =>
@@ -317,8 +321,8 @@ namespace Ymm4BoneAnimationPlugin.Shape
                             }
                         });
 
-                    // 2. 回転ハンドル（外側オフセット点：右に 45px）
-                    var rotOffset = Vector2.Transform(new Vector2(45f, 0f), targetTransform.World) - targetTransform.World.Translation;
+                    // 2. 回転ハンドル（外側・小さな丸：55px オフセット）
+                    var rotOffset = Vector2.Transform(new Vector2(55f, 0f), targetTransform.World) - targetTransform.World.Translation;
                     var rotPos = origin + rotOffset;
 
                     var rotatePoint = new ControllerPoint(
