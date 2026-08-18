@@ -16,11 +16,8 @@ namespace Ymm4BoneAnimationPlugin.Views
         [Description("移動・選択")]
         SelectMove,
 
-        [Description("ピン追加")]
-        AddPin,
-
-        [Description("ボーン接続")]
-        ConnectBone,
+        [Description("ピン・ボーン作成")]
+        AddPinAndBone,
     }
 
     /// <summary>
@@ -229,16 +226,14 @@ namespace Ymm4BoneAnimationPlugin.Views
                 if (Set(ref currentTool, value))
                 {
                     OnPropertyChanged(nameof(IsSelectMoveMode));
-                    OnPropertyChanged(nameof(IsAddPinMode));
-                    OnPropertyChanged(nameof(IsConnectBoneMode));
+                    OnPropertyChanged(nameof(IsAddPinAndBoneMode));
                 }
             }
         }
-        PuppetToolMode currentTool = PuppetToolMode.AddPin;
+        PuppetToolMode currentTool = PuppetToolMode.AddPinAndBone;
 
         public bool IsSelectMoveMode { get => CurrentTool == PuppetToolMode.SelectMove; set { if (value) CurrentTool = PuppetToolMode.SelectMove; } }
-        public bool IsAddPinMode { get => CurrentTool == PuppetToolMode.AddPin; set { if (value) CurrentTool = PuppetToolMode.AddPin; } }
-        public bool IsConnectBoneMode { get => CurrentTool == PuppetToolMode.ConnectBone; set { if (value) CurrentTool = PuppetToolMode.ConnectBone; } }
+        public bool IsAddPinAndBoneMode { get => CurrentTool == PuppetToolMode.AddPinAndBone; set { if (value) CurrentTool = PuppetToolMode.AddPinAndBone; } }
 
         public PuppetPinViewModel? SelectedPin
         {
@@ -288,8 +283,7 @@ namespace Ymm4BoneAnimationPlugin.Views
         public double PanY { get => panY; set => Set(ref panY, value); }
         double panY = 0;
 
-        public ActionCommand AddPinCommand { get; }
-        public ActionCommand ConnectBoneCommand { get; }
+        public ActionCommand AddPinAndBoneCommand { get; }
         public ActionCommand SelectMoveCommand { get; }
         public ActionCommand DeleteSelectedCommand { get; }
         public ActionCommand ClearAllCommand { get; }
@@ -305,8 +299,7 @@ namespace Ymm4BoneAnimationPlugin.Views
 
         public PuppetEditorViewModel(ImmutableList<BoneItem> existingBones)
         {
-            AddPinCommand = new ActionCommand(_ => true, _ => CurrentTool = PuppetToolMode.AddPin);
-            ConnectBoneCommand = new ActionCommand(_ => true, _ => CurrentTool = PuppetToolMode.ConnectBone);
+            AddPinAndBoneCommand = new ActionCommand(_ => true, _ => CurrentTool = PuppetToolMode.AddPinAndBone);
             SelectMoveCommand = new ActionCommand(_ => true, _ => CurrentTool = PuppetToolMode.SelectMove);
             DeleteSelectedCommand = new ActionCommand(_ => SelectedPin != null, _ => DeleteSelectedPin());
             ClearAllCommand = new ActionCommand(_ => Pins.Count > 0 || ImageLayers.Count > 0, _ => ClearAll());
@@ -536,10 +529,14 @@ namespace Ymm4BoneAnimationPlugin.Views
                 SelectedPin = Pins[0];
         }
 
+        /// <summary>
+        /// クリックした位置にピンを打ち、直前の選択ピンと自動でボーン（親子関係）を結線する。
+        /// </summary>
         public void AddPinAt(double x, double y)
         {
             PushSnapshot();
 
+            var parentPin = SelectedPin;
             var name = $"ピン{Pins.Count + 1}";
             var newPin = new PuppetPinViewModel
             {
@@ -565,7 +562,14 @@ namespace Ymm4BoneAnimationPlugin.Views
                 }
             }
 
+            // 直前のピンがあれば自動的にボーン連結
+            if (parentPin != null)
+            {
+                newPin.ParentPinId = parentPin.Id;
+            }
+
             Pins.Add(newPin);
+            RebuildBoneConnections();
             SelectedPin = newPin;
         }
 
