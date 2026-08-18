@@ -34,13 +34,22 @@ namespace Ymm4BoneAnimationPlugin.Shape
         public ImmutableList<BoneItem> Bones { get => bones; set => Set(ref bones, value); }
         ImmutableList<BoneItem> bones = [];
 
-        [Display(GroupName = "全体設定", Name = "物理演算を有効化", Description = "揺れもの設定を持つボーンの物理演算を実行します")]
+        [Display(GroupName = "全体設定", Name = "口パクを有効化", Description = "ボイスの音声に合わせて口パーツを動かします")]
         [ToggleSlider]
-        public bool IsPhysicsEnabled { get => isPhysicsEnabled; set => Set(ref isPhysicsEnabled, value); }
-        bool isPhysicsEnabled = true;
+        [DefaultValue(true)]
+        public bool IsLipSyncEnabled { get => isLipSyncEnabled; set => Set(ref isLipSyncEnabled, value); }
+        bool isLipSyncEnabled = true;
+
+        [Display(GroupName = "全体設定", Name = "口パク感度", Description = "口の開き具合の倍率（%）")]
+        [TextBoxSlider("F0", "%", 0, 300)]
+        [DefaultValue(100d)]
+        [Range(0, 1000)]
+        public double LipSyncScale { get => lipSyncScale; set => Set(ref lipSyncScale, value); }
+        double lipSyncScale = 100;
 
         [Display(GroupName = "全体設定", Name = "目パチを有効化")]
         [ToggleSlider]
+        [DefaultValue(true)]
         public bool IsBlinkEnabled { get => isBlinkEnabled; set => Set(ref isBlinkEnabled, value); }
         bool isBlinkEnabled = true;
 
@@ -50,6 +59,12 @@ namespace Ymm4BoneAnimationPlugin.Shape
         [Range(0, int.MaxValue)]
         public int BlinkSeed { get => blinkSeed; set => Set(ref blinkSeed, value); }
         int blinkSeed = 1234;
+
+        [Display(GroupName = "全体設定", Name = "物理演算を有効化", Description = "揺れもの設定を持つボーンの物理演算を実行します")]
+        [ToggleSlider]
+        [DefaultValue(true)]
+        public bool IsPhysicsEnabled { get => isPhysicsEnabled; set => Set(ref isPhysicsEnabled, value); }
+        bool isPhysicsEnabled = true;
 
         // 図形の描画内容はプレビューと出力で共通のため、ガイドは出力にも含まれる。
         [Display(GroupName = "全体設定", Name = "ボーンを表示 (プレビュー線)", Description = "メイン画面上にボーンのガイド線を描画します。動画出力にも含まれるため書き出し時はオフを推奨します")]
@@ -128,18 +143,22 @@ namespace Ymm4BoneAnimationPlugin.Shape
             // Animationは参照をそのまま持たず、必ずコピーを保持する。
             public ImmutableList<BoneItem> Bones { get; } = [.. parameter.Bones.Select(b => new BoneItem(b))];
             public string? SelectedBoneId { get; } = parameter.SelectedBoneId;
-            public bool IsPhysicsEnabled { get; } = parameter.IsPhysicsEnabled;
+            public bool IsLipSyncEnabled { get; } = parameter.IsLipSyncEnabled;
+            public double LipSyncScale { get; } = parameter.LipSyncScale;
             public bool IsBlinkEnabled { get; } = parameter.IsBlinkEnabled;
             public int BlinkSeed { get; } = parameter.BlinkSeed;
+            public bool IsPhysicsEnabled { get; } = parameter.IsPhysicsEnabled;
             public bool ShowBoneGuide { get; } = parameter.ShowBoneGuide;
 
             public void CopyTo(BoneShapeParameter parameter)
             {
                 parameter.Bones = [.. Bones.Select(b => new BoneItem(b))];
                 parameter.SelectedBoneId = SelectedBoneId;
-                parameter.IsPhysicsEnabled = IsPhysicsEnabled;
+                parameter.IsLipSyncEnabled = IsLipSyncEnabled;
+                parameter.LipSyncScale = LipSyncScale;
                 parameter.IsBlinkEnabled = IsBlinkEnabled;
                 parameter.BlinkSeed = BlinkSeed;
+                parameter.IsPhysicsEnabled = IsPhysicsEnabled;
                 parameter.ShowBoneGuide = ShowBoneGuide;
             }
         }

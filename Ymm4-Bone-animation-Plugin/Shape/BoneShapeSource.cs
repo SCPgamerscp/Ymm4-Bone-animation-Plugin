@@ -102,11 +102,14 @@ namespace Ymm4BoneAnimationPlugin.Shape
                     manualSlots[item.Id] = item.GetSlotIndex(frame, length, fps);
             }
 
+            var rawLipSync = parameter.IsLipSyncEnabled ? GetLipSyncValue(description) : 0.0;
+            var scaledLipSync = rawLipSync * (parameter.LipSyncScale / 100.0);
+
             var context = new EvaluationContext
             {
                 Time = fps > 0 ? frame / (double)fps : 0,
                 DeltaTime = fps > 0 ? 1.0 / fps : 1.0 / 60.0,
-                LipSyncValue = GetLipSyncValue(description),
+                LipSyncValue = scaledLipSync,
                 EnablePhysics = parameter.IsPhysicsEnabled,
                 EnableBlink = parameter.IsBlinkEnabled,
                 BlinkSeed = parameter.BlinkSeed,
